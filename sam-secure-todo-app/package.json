@@ -1,0 +1,33 @@
+{
+  "name": "serverless-todo-frontend",
+  "version": "1.0.0",
+  "description": "Frontend for the serverless To-Do application",
+  "main": "dist/bundle.js",
+  "scripts": {
+    "build": "webpack --mode production",
+    "dev": "webpack --mode development --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-amplify/api": "^6.3.15",
+    "@aws-amplify/auth": "^6.13.3",
+    "aws-amplify": "^6.0.21"
+  },
+  "devDependencies": {
+    "assert": "^2.1.0",
+    "buffer": "^6.0.3",
+    "crypto-browserify": "^3.12.1",
+    "dotenv-webpack": "^8.1.1",
+    "https-browserify": "^1.0.0",
+    "os-browserify": "^0.3.0",
+    "process": "^0.11.10",
+    "stream-browserify": "^3.0.0",
+    "stream-http": "^3.2.0",
+    "url": "^0.11.4",
+    "util": "^0.12.5",
+    "webpack": "^5.99.9",
+    "webpack-cli": "^5.1.4"
+  }
+}

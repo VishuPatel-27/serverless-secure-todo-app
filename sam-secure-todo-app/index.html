@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Serverless To-Do App</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Serverless To-Do</h1>
+
+        <!-- Authentication Section -->
+        <div id="auth-section" class="mb-8">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4 text-center" id="auth-heading">Sign Up</h2>
+
+            <div class="mb-4">
+                <label for="email" class="block text-gray-700 text-sm font-medium mb-2">Email:</label>
+                <input type="email" id="email" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="your@example.com">
+            </div>
+            <div class="mb-6">
+                <label for="password" class="block text-gray-700 text-sm font-medium mb-2">Password:</label>
+                <input type="password" id="password" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="********">
+            </div>
+
+            <div id="confirmation-code-section" class="mb-6 hidden">
+                <label for="confirmation-code" class="block text-gray-700 text-sm font-medium mb-2">Confirmation Code:</label>
+                <input type="text" id="confirmation-code" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="XXXXXX">
+                <button id="confirm-signup-button" class="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline w-full transition duration-300">Confirm Sign Up</button>
+            </div>
+
+            <button id="signup-button" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline w-full mb-3 transition duration-300">Sign Up</button>
+            <button id="signin-button" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline w-full mb-3 transition duration-300">Sign In</button>
+            <button id="toggle-auth-mode" class="text-blue-500 hover:underline text-sm w-full text-center block mt-2">Already have an account? Sign In</button>
+
+            <p id="auth-message" class="text-sm mt-4 text-center"></p>
+        </div>
+
+        <!-- To-Do Application Section -->
+        <div id="todo-app-section" class="hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-semibold text-gray-700">My To-Do List</h2>
+                <button id="signout-button" class="bg-red-500 hover:bg-red-600 text-white text-sm font-bold py-1 px-3 rounded-lg focus:outline-none focus:shadow-outline transition duration-300">Sign Out</button>
+            </div>
+
+            <div class="mb-6 bg-gray-50 p-4 rounded-lg shadow-inner">
+                <h3 class="text-xl font-medium text-gray-700 mb-3">Add New To-Do</h3>
+                <input type="text" id="new-todo-title" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-green-500 mb-3" placeholder="To-Do Title" required>
+                <textarea id="new-todo-description" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-green-500 mb-3 h-20 resize-none" placeholder="Description (optional)"></textarea>
+                <button id="add-todo-button" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline w-full transition duration-300">Add To-Do</button>
+            </div>
+
+            <div id="todo-list" class="space-y-3">
+                <!-- To-Do items will be dynamically loaded here -->
+                <p class="text-gray-500 text-center">Loading To-Dos...</p>
+            </div>
+            <p id="todo-message" class="text-sm mt-4 text-center"></p>
+        </div>
+    </div>
+
+    <!-- Your custom application logic, now bundled by Webpack -->
+    <script src="bundle.js" defer></script>
+</body>
+</html>

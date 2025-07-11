@@ -1,0 +1,487 @@
+# This AWS Serverless Application Model (SAM) template defines serverless infrastructure.
+# It includes API Gateway endpoints, Lambda functions, DynamoDB table, Cognito User Pool,
+# and an S3 bucket for the static frontend.
+AWSTemplateFormatVersion: '2010-09-09'
+# This below declaration is required for SAM templates files (this declaration identifies an AWS CloudFormation template as a SAM template)
+Transform: AWS::Serverless-2016-10-31
+
+Description: A secure serverless To-Do application with Node.js and Cognito authentication.
+
+# This template deploys a serverless To-Do application with the following components:
+# - API Gateway for RESTful endpoints
+# - Lambda functions for business logic
+# - DynamoDB for data storage
+# - Cognito User Pool for user authentication
+# - S3 bucket for hosting the static frontend
+
+# This parameter section allows customization of the deployment.
+# You can specify the S3 bucket name for the frontend and the API Gateway URL.
+Parameters:
+  # Parameter for the S3 bucket name where the frontend will be hosted.
+  FrontendBucketName:
+    Type: String
+    Description: Name of the S3 bucket to host the static frontend. Must be globally unique.
+    # Default value is provided, but we can change it to our desired bucket name
+    Default: serverless-secure-todo-app-frontend
+
+Globals:
+  Function:
+    # All Lambda functions will use Node.js 18.x runtime.
+    Runtime: nodejs18.x
+    # Set a default timeout for Lambda functions. Adjust as needed.
+    Timeout: 10
+    # # Common environment variables for all functions (e.g., DynamoDB table name)
+    # Environment:
+    #   TODOS_TABLE_NAME: !Ref TodosTable
+
+Resources:
+  # --- Amazon Cognito User Pool for Authentication ---
+  # This User Pool manages user registration, login, and identity.
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: ServerlessTodoUserPool
+      # Configure attributes for user sign-up. Email is common.
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email # Automatically verify email addresses upon registration
+      # Policies define the security requirements for user passwords.
+      # Here, we enforce a strong password policy.
+      # You can adjust these policies based on your security requirements.
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          RequireUppercase: true
+      # Define the schema for user attributes.
+      # This schema defines the attributes that users must provide when signing up.
+      # Here, we require an email address as a unique identifier.
+      # You can add more attributes as needed (e.g., phone number, name).
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Mutable: true
+          Required: true
+      MfaConfiguration: 'OFF' # Can be set to OPTIONAL or REQUIRED for MFA
+
+  # A client application for the Cognito User Pool.
+  # This is what your frontend will use to interact with Cognito.
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: ServerlessTodoAppClient
+      UserPoolId: !Ref CognitoUserPool
+      # Define allowed OAuth flows for authentication.
+      # You might configure different flows based on your frontend needs (e.g., Implicit Grant for SPAs).
+      # SupportedIdentityProviders defines which identity providers can be used.
+      # Here, we only use Cognito as the identity provider. we can add others like Google, Facebook, etc.
+      SupportedIdentityProviders:
+        - COGNITO
+      # Allowed OAuth flows and scopes for the client.
+      AllowedOAuthFlowsUserPoolClient: true
+      # OAuth flows define how the client can authenticate users.
+      # 'code' is used for server-side applications, 'implicit' for single-page applications.
+      # AllowedOAuthScopes defines the permissions the client can request.
+      # Common scopes include 'email', 'openid', and 'profile'.
+      AllowedOAuthFlows:
+        - implicit
+        - code
+      AllowedOAuthScopes:
+        - email
+        - openid
+        - profile
+      # Callback URLs are where Cognito redirects after successful authentication.
+      # NOW USING CloudFront distribution URL with HTTPS.
+      CallbackURLs:
+        - http://localhost:8080/ # For local development
+        - !Join
+          - ''
+          - - https://
+            - !GetAtt CloudFrontDistribution.DomainName
+            - /
+          # HTTPS via CloudFront
+      LogoutURLs:
+        - http://localhost:8080/ # For local development
+        - !Join
+          - ''
+          - - https://
+            - !GetAtt CloudFrontDistribution.DomainName
+            - /
+          # HTTPS via CloudFront
+      ExplicitAuthFlows:
+        # These are the authentication flows that the client will support.
+        # This allows the client to authenticate users using different methods.
+        # For example, ALLOW_USER_PASSWORD_AUTH allows users to log in with their username and password.
+        - ALLOW_ADMIN_USER_PASSWORD_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+
+  # --- Amazon DynamoDB Table for To-Do Items ---
+  TodosTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ServerlessTodoItems
+      # Define the primary key for your table.
+      # 'userId' as partition key allows efficient retrieval of all todos for a specific user.
+      # 'todoId' as sort key allows unique identification of each todo for a user.
+      # userId is a unique identifier for each user, and todoId is a unique identifier for each to-do item.
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: todoId
+          AttributeType: S
+      # Define the key schema for the table.
+      # The key schema defines how the data is organized in the table.
+      # Here, we use a composite key with userId as the partition key and todoId as the sort key.
+      KeySchema:
+        - AttributeName: userId
+          # This is the partition key for the table
+          KeyType: HASH
+        - AttributeName: todoId
+          # This allows us to store multiple todos for each user
+          KeyType: RANGE
+      # Set billing mode to PAY_PER_REQUEST for cost optimization in serverless apps.
+      # This scales automatically and you pay only for reads/writes.
+      BillingMode: PAY_PER_REQUEST
+
+  # --- API Gateway Definition ---
+  # This explicitly defines your API Gateway and its authorizers.
+  TodoApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Auth:
+        DefaultAuthorizer: CognitoUserPoolAuthorizer
+        Authorizers:
+          CognitoUserPoolAuthorizer:
+            UserPoolArn: !GetAtt CognitoUserPool.Arn
+      DefinitionBody:
+        swagger: 2.0
+        info:
+          title: ServerlessTodoAPI
+          version: 1.0
+        paths:
+          /todos:
+            get:
+              consumes:
+                - application/json
+              produces:
+                - application/json
+              x-amazon-apigateway-integration:
+                uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetTodosFunction.Arn}/invocations
+                httpMethod: POST
+                type: aws_proxy
+            post:
+              consumes:
+                - application/json
+              produces:
+                - application/json
+              x-amazon-apigateway-integration:
+                uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CreateTodoFunction.Arn}/invocations
+                httpMethod: POST
+                type: aws_proxy
+            options:
+              consumes:
+                - application/json
+              produces:
+                - application/json
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: '{"statusCode": 200}'
+                responses:
+                  default:
+                    statusCode: 200
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+                      method.response.header.Access-Control-Allow-Methods: "'OPTIONS,GET,POST'"
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                    responseTemplates:
+                      application/json: '{}'
+              security: []
+              responses:
+                '200':
+                  description: '200 response'
+                  headers:
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                    Access-Control-Allow-Origin:
+                      type: string
+              
+          /todos/{id}:
+            put:
+              consumes:
+                - application/json
+              produces:
+                - application/json
+              x-amazon-apigateway-integration:
+                uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UpdateTodoFunction.Arn}/invocations
+                httpMethod: POST
+                type: aws_proxy
+            delete:
+              consumes:
+                - application/json
+              produces:
+                - application/json
+              x-amazon-apigateway-integration:
+                uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteTodoFunction.Arn}/invocations
+                httpMethod: POST
+                type: aws_proxy
+            options:
+              consumes:
+                - application/json
+              produces:
+                - application/json
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: '{"statusCode": 200}'
+                responses:
+                  default:
+                    statusCode: 200
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+                      method.response.header.Access-Control-Allow-Methods: "'OPTIONS,PUT,DELETE'"
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                    responseTemplates:
+                      application/json: '{}'
+              security: []
+              responses:
+                '200':
+                  description: '200 response'
+                  headers:
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                    Access-Control-Allow-Origin:
+                      type: string
+              
+  # --- Explicit IAM Role for Lambda Functions ---
+  # Define a single IAM Role that all your Lambda functions will use.
+  # This role grants permissions to write logs to CloudWatch and perform CRUD on DynamoDB.
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com # Allows Lambda service to assume this role
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole # Provides basic CloudWatch logging permissions
+      Policies:
+        - PolicyName: DynamoDBAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                  - dynamodb:BatchGetItem
+                  - dynamodb:BatchWriteItem
+                Resource: !GetAtt TodosTable.Arn # Grants access specifically to your TodosTable ARN
+
+  # Lambda function to create a new to-do item.
+  CreateTodoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: todos.createTodoHandler # points to todos.js file, createTodoHandler function
+      CodeUri: src/ # points to the source code file
+      Runtime: nodejs18.x # Explicitly set runtime here as Globals.Function is overridden by Role property
+      Timeout: 10 # Explicitly set timeout here
+      Environment:
+        Variables:
+          TODOS_TABLE_NAME: !Ref TodosTable
+      Role: !GetAtt LambdaExecutionRole.Arn # Assign the explicit IAM role      
+      # Define events that trigger this Lambda function (API Gateway endpoint).
+      Events:
+        CreateTodoApi:
+          Type: Api
+          Properties:
+            Path: /todos
+            Method: post
+            RestApiId: !Ref TodoApi # Link to the explicitly defined API Gateway
+
+  # Lambda function to get all to-do items for the authenticated user.
+  GetTodosFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: todos.getTodosHandler
+      CodeUri: src/
+      Runtime: nodejs18.x
+      Timeout: 10
+      Environment:
+        Variables:
+          TODOS_TABLE_NAME: !Ref TodosTable
+      Role: !GetAtt LambdaExecutionRole.Arn # Assign the explicit IAM role
+      Events:
+        GetTodosApi:
+          Type: Api
+          Properties:
+            Path: /todos
+            Method: get
+            RestApiId: !Ref TodoApi
+
+  # Lambda function to update an existing to-do item.
+  UpdateTodoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: todos.updateTodoHandler
+      CodeUri: src/
+      Runtime: nodejs18.x
+      Timeout: 10
+      Environment:
+        Variables:
+          TODOS_TABLE_NAME: !Ref TodosTable
+      Role: !GetAtt LambdaExecutionRole.Arn # Assign the explicit IAM role
+      Events:
+        UpdateTodoApi:
+          Type: Api
+          Properties:
+            Path: /todos/{id}
+            Method: put
+            RestApiId: !Ref TodoApi
+
+  # Lambda function to delete a to-do item.
+  DeleteTodoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: todos.deleteTodoHandler
+      CodeUri: src/
+      Runtime: nodejs18.x
+      Timeout: 10
+      Environment:
+        Variables:
+          TODOS_TABLE_NAME: !Ref TodosTable
+      Role: !GetAtt LambdaExecutionRole.Arn # Assign the explicit IAM role
+      Events:
+        DeleteTodoApi:
+          Type: Api
+          Properties:
+            Path: /todos/{id}
+            Method: delete
+            RestApiId: !Ref TodoApi
+
+  # --- S3 Bucket for Static Frontend Hosting ---
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref FrontendBucketName
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html # For single-page applications, route all errors to index.html
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - '*'
+            AllowedMethods:
+              - GET
+              - HEAD
+              - POST
+              - PUT
+              - DELETE
+            AllowedOrigins:
+              - '*' # In a real-world scenario, restrict this to your domain and API Gateway URL
+            ExposedHeaders:
+              - ETag
+            MaxAge: 3000
+
+  # Bucket Policy to allow CloudFront OAI access and public read for website content
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      # This policy allows CloudFront to access the S3 bucket and also allows public read access for the website.
+      PolicyDocument:
+        Statement:
+          - Sid: CloudFrontOaiAccess
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity
+                ${CloudFrontOriginAccessIdentity}
+            Action:
+              - s3:GetObject
+            Resource: !Join
+              - ''
+              - - 'arn:aws:s3:::'
+                - !Ref FrontendBucket
+                - /*
+
+  # --- CloudFront Origin Access Identity (OAI) ---
+  # This identity is used by CloudFront to access your S3 bucket,
+  # ensuring that the S3 bucket does NOT need to be publicly readable directly.
+  CloudFrontOriginAccessIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: OAI for S3 Frontend Bucket
+
+  # --- Amazon CloudFront Distribution ---
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Comment: CloudFront distribution for Serverless To-Do App Frontend
+        Enabled: true
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin # Link to the origin defined below
+          ViewerProtocolPolicy: redirect-to-https # Redirects HTTP to HTTPS
+          AllowedMethods:
+            # Allow standard HTTP methods for web content
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          ForwardedValues:
+            QueryString: true
+            Cookies:
+              Forward: none
+          Compress: true # Enable gzip compression for faster delivery
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt FrontendBucket.RegionalDomainName # Use RegionalDomainName for CloudFront origin
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub origin-access-identity/cloudfront/${CloudFrontOriginAccessIdentity}
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true # Use CloudFront's default SSL certificate
+        DefaultRootObject: index.html # Serves index.html when root URL is accessed
+
+Outputs:
+  # Output the API Gateway endpoint URL after deployment.
+  ApiEndpoint:
+    Description: API Gateway endpoint URL for Prod stage
+    # this will be dynamically generated by SAM during deployment
+    # The ServerlessRestApi is a logical ID generated by SAM for the API Gateway.
+    # This uses the !Sub intrinsic function to substitute the API ID and region into the URL.
+    Value: !Sub https://${TodoApi}.execute-api.${AWS::Region}.amazonaws.com/Prod
+
+  # Output the Cognito User Pool ID and Client ID for frontend configuration.
+  CognitoUserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref CognitoUserPool
+
+  CognitoUserPoolClientId:
+    Description: Cognito User Pool Client ID
+    Value: !Ref CognitoUserPoolClient
+
+  # Output the CloudFront Distribution URL (your primary access point for the frontend)
+  FrontendCloudFrontURL:
+    Description: URL of the CloudFront distribution for the static frontend
+    Value: !GetAtt CloudFrontDistribution.DomainName

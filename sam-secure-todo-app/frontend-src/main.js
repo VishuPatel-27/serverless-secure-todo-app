@@ -130,7 +130,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-      const { userNextSteps } = await signUp({
+      // need to change the signUp function to match the latest Amplify Auth API
+      const { userId, nextStep } = await signUp({
         username: email,
         password: password,
         options: {
@@ -139,20 +140,20 @@ document.addEventListener('DOMContentLoaded', () => {
           },
         },
       });
-      console.log('Sign up response:', userNextSteps);
+      console.log('Sign up response:', userId, nextStep);
 
-      if (userNextSteps.signUpStep === 'CONFIRM_SIGN_UP') {
+      if (nextStep.signUpStep === 'CONFIRM_SIGN_UP') {
         authMessage.textContent = 'Sign up successful! Check your email for a confirmation code.';
         authMessage.className = 'text-sm mt-4 text-center text-green-500';
         confirmationCodeSection.classList.remove('hidden');
         signupButton.classList.add('hidden');
       } else {
-        authMessage.textContent = 'Sign up successful, but unexpected next step. Please check console.';
+        authMessage.textContent = 'Sign up next step: ${nextStep.signUpStep}';
         authMessage.className = 'text-sm mt-4 text-center text-orange-500';
       }
     } catch (error) {
       console.error('Sign up error:', error);
-      authMessage.textContent = `Sign Up failed: ${error.message || 'Unknown error'}`;
+      authMessage.textContent = `Sign up failed!`;
       authMessage.className = 'text-sm mt-4 text-center text-red-500';
     }
   }
@@ -192,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
       confirmationCodeSection.classList.add('hidden');
     } catch (error) {
       console.error('Confirm sign up error:', error);
-      authMessage.textContent = `Confirmation failed: ${error.message || 'Unknown error'}`;
+      authMessage.textContent = `Confirmation failed, please check your code and try again.`;
       authMessage.className = 'text-sm mt-4 text-center text-red-500';
     }
   }
@@ -229,7 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
         authMessage.className = 'text-sm mt-4 text-center text-green-500';
         showTodoApp();
       } else {
-        authMessage.textContent = `Sign in failed: ${nextStep.signInStep || 'Unknown error'}`;
+        authMessage.textContent = `Sign in failed! Please check your credentials and try again.`;
         authMessage.className = 'text-sm mt-4 text-center text-orange-500';
       }
     } catch (error) {

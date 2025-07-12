@@ -159,10 +159,10 @@ Resources:
           CognitoUserPoolAuthorizer:
             UserPoolArn: !GetAtt CognitoUserPool.Arn
       DefinitionBody:
-        swagger: 2.0
+        swagger: 2
         info:
           title: ServerlessTodoAPI
-          version: 1.0
+          version: 1
         paths:
           /todos:
             get:
@@ -196,15 +196,15 @@ Resources:
                   default:
                     statusCode: 200
                     responseParameters:
-                      method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-                      method.response.header.Access-Control-Allow-Methods: "'OPTIONS,GET,POST'"
-                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'''
+                      method.response.header.Access-Control-Allow-Methods: '''OPTIONS,GET,POST'''
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
                     responseTemplates:
                       application/json: '{}'
               security: []
               responses:
                 '200':
-                  description: '200 response'
+                  description: 200 response
                   headers:
                     Access-Control-Allow-Headers:
                       type: string
@@ -212,7 +212,7 @@ Resources:
                       type: string
                     Access-Control-Allow-Origin:
                       type: string
-              
+
           /todos/{id}:
             put:
               consumes:
@@ -245,15 +245,15 @@ Resources:
                   default:
                     statusCode: 200
                     responseParameters:
-                      method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-                      method.response.header.Access-Control-Allow-Methods: "'OPTIONS,PUT,DELETE'"
-                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'''
+                      method.response.header.Access-Control-Allow-Methods: '''OPTIONS,PUT,DELETE'''
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
                     responseTemplates:
                       application/json: '{}'
               security: []
               responses:
                 '200':
-                  description: '200 response'
+                  description: 200 response
                   headers:
                     Access-Control-Allow-Headers:
                       type: string
@@ -261,7 +261,7 @@ Resources:
                       type: string
                     Access-Control-Allow-Origin:
                       type: string
-              
+
   # --- Explicit IAM Role for Lambda Functions ---
   # Define a single IAM Role that all your Lambda functions will use.
   # This role grants permissions to write logs to CloudWatch and perform CRUD on DynamoDB.

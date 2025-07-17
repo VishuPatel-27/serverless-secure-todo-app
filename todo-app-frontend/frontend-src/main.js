@@ -50,10 +50,12 @@ const awsConfig = {
 // Configure Amplify with the AWS configuration
 Amplify.configure(awsConfig);
 
-// Wrap all your application logic in a DOMContentLoaded listener.
-// This ensures the entire HTML document is loaded and parsed,
-// and all external scripts (like Amplify) are available before code runs.
-// document is a global object representing the HTML document.
+/**
+ * Main function to initialize the application.
+ * Sets up event listeners for user interactions,
+ * configures Amplify, and handles authentication state.
+ * @returns {void}
+ */
 document.addEventListener('DOMContentLoaded', () => {
 
   // Configure Amplify
@@ -130,7 +132,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-      // need to change the signUp function to match the latest Amplify Auth API
       const { userId, nextStep } = await signUp({
         username: email,
         password: password,
@@ -317,7 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const apiName = 'TodoApi';
       const path = '/todos';
-      const result  = await post({
+      const result = await post({
         apiName,
         path,
         options: {
@@ -327,7 +328,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         }
       });
-      
+
       // Log the result for debugging
       const raw = await result.response;
       const data = await raw.body.json();
@@ -376,9 +377,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await raw.body.json();
       console.log('Fetched To-Dos data:', data);
 
-      if(data.todos && data.todos.length > 0) {
+      if (data.todos && data.todos.length > 0) {
         renderTodos(data.todos);
-      }else{
+      } else {
         todoList.innerHTML = '<p class="text-green-500 text-center">No tasks for you, today!</p>';
         console.error('Invalid To-Do response format:', data);
       }

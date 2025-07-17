@@ -114,10 +114,12 @@ Resources:
       ExplicitAuthFlows:
         # These are the authentication flows that the client will support.
         # This allows the client to authenticate users using different methods.
-        # For example, ALLOW_USER_PASSWORD_AUTH allows users to log in with their username and password.
+        # For eample, ALLOW_USER_SRP_AUTH allows users to log in using the Secure Remote Password protocol, 
+        # Which is a secure way to authenticate users without sending their password in plaintext.
         - ALLOW_ADMIN_USER_PASSWORD_AUTH
         - ALLOW_USER_PASSWORD_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
 
   # --- Amazon DynamoDB Table for To-Do Items ---
   TodosTable:
@@ -153,16 +155,17 @@ Resources:
     Type: AWS::Serverless::Api
     Properties:
       StageName: Prod
-      Auth:
-        DefaultAuthorizer: CognitoUserPoolAuthorizer
-        Authorizers:
-          CognitoUserPoolAuthorizer:
-            UserPoolArn: !GetAtt CognitoUserPool.Arn
       DefinitionBody:
         swagger: 2
         info:
           title: ServerlessTodoAPI
           version: 1
+        # This is the root path for your API endpoints.
+        x-amazon-apigateway-authorizer:
+        CognitoUserPoolAuthorizer:
+          type: cognito_user_pools
+          providerARNs:
+            - !GetAtt CognitoUserPool.Arn
         paths:
           /todos:
             get:
@@ -170,6 +173,8 @@ Resources:
                 - application/json
               produces:
                 - application/json
+              security:
+              - CognitoUserPoolAuthorizer: []
               x-amazon-apigateway-integration:
                 uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetTodosFunction.Arn}/invocations
                 httpMethod: POST
@@ -179,6 +184,8 @@ Resources:
                 - application/json
               produces:
                 - application/json
+              security:
+              - CognitoUserPoolAuthorizer: []
               x-amazon-apigateway-integration:
                 uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CreateTodoFunction.Arn}/invocations
                 httpMethod: POST
@@ -188,6 +195,7 @@ Resources:
                 - application/json
               produces:
                 - application/json
+              security: []
               x-amazon-apigateway-integration:
                 type: mock
                 requestTemplates:
@@ -201,7 +209,6 @@ Resources:
                       method.response.header.Access-Control-Allow-Origin: '''*'''
                     responseTemplates:
                       application/json: '{}'
-              security: []
               responses:
                 '200':
                   description: 200 response
@@ -219,6 +226,8 @@ Resources:
                 - application/json
               produces:
                 - application/json
+              security:
+              - CognitoUserPoolAuthorizer: []
               x-amazon-apigateway-integration:
                 uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UpdateTodoFunction.Arn}/invocations
                 httpMethod: POST
@@ -228,6 +237,8 @@ Resources:
                 - application/json
               produces:
                 - application/json
+              security:
+              - CognitoUserPoolAuthorizer: []
               x-amazon-apigateway-integration:
                 uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteTodoFunction.Arn}/invocations
                 httpMethod: POST
@@ -237,6 +248,7 @@ Resources:
                 - application/json
               produces:
                 - application/json
+              security: []
               x-amazon-apigateway-integration:
                 type: mock
                 requestTemplates:
@@ -250,7 +262,6 @@ Resources:
                       method.response.header.Access-Control-Allow-Origin: '''*'''
                     responseTemplates:
                       application/json: '{}'
-              security: []
               responses:
                 '200':
                   description: 200 response
@@ -395,7 +406,7 @@ Resources:
               - PUT
               - DELETE
             AllowedOrigins:
-              - '*' # In a real-world scenario, restrict this to your domain and API Gateway URL
+              - !Sub https://${CloudFrontDistribution.DomainName}
             ExposedHeaders:
               - ETag
             MaxAge: 3000

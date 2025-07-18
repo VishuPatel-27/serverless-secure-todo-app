@@ -28,4 +28,4 @@ node_modules/
 
 **/.aws-sam
 
-.github/
+.github/workflows/frontend-workflow.yml

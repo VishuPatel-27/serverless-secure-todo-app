@@ -20,9 +20,6 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 # Define the jobs that will run in this workflow
 # Each job runs in a separate environment and can have its own steps.
@@ -60,7 +57,7 @@ jobs:
       - name: Install dependencies
         run: |
           # Navigate to the source directory
-          cd sam-backend-todo-app/src
+          cd ./src
           # Install Node.js dependencies
           npm ci
      # validate the SAM template

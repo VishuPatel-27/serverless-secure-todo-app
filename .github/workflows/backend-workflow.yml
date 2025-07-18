@@ -1,0 +1,76 @@
+# .github/workflows/backend-workflow.yaml
+# This GitHub Actions workflow file is used to automate the build and deployment process for the Todo App backend.
+# It includes steps for checking out the code, installing dependencies, running tests, and deploying the application.
+# It uses the AWS SAM CLI for building and deploying the serverless application.
+# It also includes caching for dependencies to speed up the workflow.
+# The workflow is defined in YAML format and follows the GitHub Actions syntax.
+
+# Workflow name
+name: Todo App Backend Workflow
+
+# Default settings for the workflow
+# This section sets the default working directory for all run steps in the workflow.
+defaults:
+  run:
+    working-directory: sam-backend-todo-app/
+
+# Trigger conditions for the workflow
+# The workflow is triggered on pushes and pull requests to the main branch.
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+# Define the jobs that will run in this workflow
+# Each job runs in a separate environment and can have its own steps.
+# Jobs run in parallel by defult therefore to ensure they run sequentially,
+# we will use the `needs` keyword to specify dependencies between jobs.
+jobs:
+  # name of the job
+  build-and-deploy:
+    # The job runs on the latest version of Ubuntu
+    runs-on: ubuntu-latest
+    # Setting environment for the job
+    environment:
+      name: prod
+    # Steps to execute in this job
+    steps:
+      # Checkout the code from the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+      # Set up Node.js environment
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '10.9.0'
+      # Set up SAM CLI
+      - name: Set up AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
+      # set up aws credentials
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+      # Install dependencies
+      - name: Install dependencies
+        run: |
+          # Navigate to the source directory
+          cd sam-backend-todo-app/src
+          # Install Node.js dependencies
+          npm ci
+     # validate the SAM template
+      - name: Validate SAM template
+        run: sam validate --template-file ./template.yaml
+
+      # Build the application using AWS SAM CLI
+      - name: Build application
+        run: sam build --use-container --template-file ./template.yaml
+
+      # deploy the application using AWS SAM CLI
+      - name: Deploy application
+        run: sam deploy --template-file ./template.yaml --stack-name todo-app-backend --no-fail-on-empty-changeset

@@ -406,7 +406,7 @@ Resources:
               - PUT
               - DELETE
             AllowedOrigins:
-              - !Sub https://${CloudFrontDistribution.DomainName}
+              - '*' # Allow all origins for CORS
             ExposedHeaders:
               - ETag
             MaxAge: 3000

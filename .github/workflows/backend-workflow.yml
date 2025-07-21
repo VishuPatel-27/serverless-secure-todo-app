@@ -21,8 +21,11 @@ on:
     branches:
       - main
     paths:
-      - 'sam-backend-todo-app/**'
-
+      - 'todo-app-frontend/**'
+      - '.github/workflows/backend-workflow.yml'
+  workflow_dispatch:
+    # This allows manual triggering of the workflow from the GitHub Actions UI.
+    
 # Define the jobs that will run in this workflow
 # Each job runs in a separate environment and can have its own steps.
 # Jobs run in parallel by defult therefore to ensure they run sequentially,

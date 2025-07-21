@@ -23,9 +23,9 @@ on:
     paths:
       - 'todo-app-frontend/**'
       - '.github/workflows/backend-workflow.yml'
+  # This allows manual triggering of the workflow from the GitHub Actions UI.
   workflow_dispatch:
-    # This allows manual triggering of the workflow from the GitHub Actions UI.
-    
+
 # Define the jobs that will run in this workflow
 # Each job runs in a separate environment and can have its own steps.
 # Jobs run in parallel by defult therefore to ensure they run sequentially,
@@ -47,7 +47,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '10.9.0'
+          node-version: '20.18.0'
       # Set up SAM CLI
       - name: Set up AWS SAM CLI
         uses: aws-actions/setup-sam@v2

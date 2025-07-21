@@ -70,6 +70,9 @@ jobs:
       - name: Export .env to environment
         run: |
           export $(cat .env | xargs)
+          echo "USERPOOL_ID=$UserPoolId" >> $GITHUB_ENV
+          echo "USERPOOL_CLIENT_ID=$UserPoolClientId" >> $GITHUB_ENV
+          echo "APIENDPOINT=$ApiEndPoint" >> $GITHUB_ENV
           echo "S3_BUCKET=$FrontendBucketName" >> $GITHUB_ENV
           echo "CLOUDFRONT_DIST_ID=$CloudFrontDistributionId" >> $GITHUB_ENV
       # Install dependencies

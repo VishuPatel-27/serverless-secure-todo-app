@@ -20,6 +20,8 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'todo-app-frontend/**'
 
 # Define the jobs that will run in this workflow
 # Each job runs in a separate environment and can have its own steps.

@@ -1,0 +1,97 @@
+# .github/workflows/frontend-workflow.yaml
+# This GitHub Actions workflow file is used to automate the build and deployment process for the Todo App frontend.
+# It includes steps for checking out the code, installing dependencies, running tests, and deploying the application.
+# It uses the webpack for building the frontend application.
+# It also includes caching for dependencies to speed up the workflow.
+# The workflow is defined in YAML format and follows the GitHub Actions syntax.
+
+# Workflow name
+name: Todo App Frontend Workflow
+
+# Default settings for the workflow
+# This section sets the default working directory for all run steps in the workflow.
+defaults:
+  run:
+    working-directory: todo-app-frontend/
+
+# Trigger conditions for the workflow
+# The workflow is triggered on pushes and pull requests to the main branch.
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+# Define the jobs that will run in this workflow
+# Each job runs in a separate environment and can have its own steps.
+# Jobs run in parallel by defult therefore to ensure they run sequentially,
+# we will use the `needs` keyword to specify dependencies between jobs.
+jobs:
+  # name of the job
+  build-and-deploy:
+    # The job runs on the latest version of Ubuntu
+    runs-on: ubuntu-latest
+    # Setting environment for the job
+    environment:
+      name: prod
+    # Steps to execute in this job
+    steps:
+      # Checkout the code from the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+      # Set up Node.js environment
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '10.9.0'
+      # Set up SAM CLI
+      - name: Set up AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
+      # set up aws credentials
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+      # run bash script
+      - name: configure environment variables
+        run: |
+          aws cloudformation describe-stacks \
+          --stack-name ${{ vars.STACK_NAME }} \
+          --query "Stacks[0].Outputs" \
+          --output json | jq -r '.[] | "\(.OutputKey)=\(.OutputValue)"' > .env
+      # Load .env variables into the workflow environment
+      - name: Export .env to environment
+        run: |
+          export $(cat .env | xargs)
+          echo "S3_BUCKET=$FrontendBucketName" >> $GITHUB_ENV
+          echo "CLOUDFRONT_DIST_ID=$CloudFrontDistributionId" >> $GITHUB_ENV
+      # Install dependencies
+      - name: Install dependencies
+        run: |
+          # Install Node.js dependencies
+          npm install
+      # Build the application using webpack
+      - name: Build application
+        run: |
+          # Build the application using webpack
+          npm run build
+      # Upload the built application to S3
+      - name: Upload to S3
+        run: |
+          # Delete existing files in the S3 bucket
+          aws s3 rm s3://${{S3_BUCKET}} --recursive
+          
+          # Upload the built application to S3 bucket
+          aws s3 sync ./dist/bundle.js s3://${{S3_BUCKET}} --delete
+          aws s3 sync ./index.html s3://${{S3_BUCKET}} --delete
+
+      # Invalidate CloudFront cache
+      - name: Invalidate CloudFront cache
+        run: |
+          # Invalidate the CloudFront cache to ensure the latest version is served
+          aws cloudfront create-invalidation --distribution-id ${{CLOUDFRONT_DIST_ID}} --paths "/*"
+

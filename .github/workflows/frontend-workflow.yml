@@ -95,5 +95,5 @@ jobs:
       - name: Invalidate CloudFront cache
         run: |
           # Invalidate the CloudFront cache to ensure the latest version is served
-          aws cloudfront create-invalidation --distribution-id ${{CLOUDFRONT_DIST_ID}} --paths "/*"
+          aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_DIST_ID --paths "/*"
 

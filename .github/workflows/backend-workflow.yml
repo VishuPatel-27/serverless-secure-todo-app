@@ -59,7 +59,7 @@ jobs:
           # Navigate to the source directory
           cd ./src
           # Install Node.js dependencies
-          npm ci
+          npm install
      # validate the SAM template
       - name: Validate SAM template
         run: sam validate --template-file ./template.yaml

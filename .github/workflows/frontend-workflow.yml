@@ -89,8 +89,8 @@ jobs:
           aws s3 rm s3://$S3_BUCKET --recursive
           
           # Upload the built application to S3 bucket
-          aws s3 sync ./dist/bundle.js s3://$S3_BUCKET --delete
-          aws s3 sync ./index.html s3://$S3_BUCKET --delete
+          aws s3 cp ./dist/bundle.js s3://$S3_BUCKET
+          aws s3 cp ./index.html s3://$S3_BUCKET
 
       # Invalidate CloudFront cache
       - name: Invalidate CloudFront cache

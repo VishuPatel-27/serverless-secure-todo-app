@@ -30,18 +30,18 @@ import {
 const awsConfig = {
   Auth: {
     Cognito: {
-
+      
       // Use environment variables for sensitive information
-      userPoolId: process.env.VITE_APP_USER_POOL_ID,
-      userPoolClientId: process.env.VITE_APP_USER_POOL_CLIENT_ID,
+      userPoolId: process.env.UserPoolId,
+      userPoolClientId: process.env.UserPoolClientId,
     },
   },
   API: {
     REST: {
       TodoApi: {
         // Use environment variables for API endpoint and region
-        endpoint: process.env.VITE_APP_API_ENDPOINT,
-        region: process.env.VITE_APP_AWS_REGION,
+        endpoint: process.env.ApiEndpoint,
+        region: process.env.AWS_REGION,
       },
     },
   },

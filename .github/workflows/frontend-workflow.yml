@@ -23,6 +23,7 @@ on:
     paths:
       - 'todo-app-frontend/**'
       - '.github/workflows/frontend-workflow.yml'
+  # This allows manual triggering of the workflow from the GitHub Actions UI.
   workflow_dispatch:
     
 
@@ -47,7 +48,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '10.9.0'
+          node-version: '20.18.0'
       # Set up SAM CLI
       - name: Set up AWS SAM CLI
         uses: aws-actions/setup-sam@v2
@@ -95,5 +96,5 @@ jobs:
       - name: Invalidate CloudFront cache
         run: |
           # Invalidate the CloudFront cache to ensure the latest version is served
-          aws cloudfront create-invalidation --distribution-id ${{CLOUDFRONT_DIST_ID}} --paths "/*"
+          aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_DIST_ID --paths "/*"
 

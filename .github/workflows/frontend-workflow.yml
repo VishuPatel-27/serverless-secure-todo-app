@@ -20,9 +20,8 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
+    paths:
+      - 'todo-app-frontend/**'
 
 # Define the jobs that will run in this workflow
 # Each job runs in a separate environment and can have its own steps.
@@ -83,11 +82,11 @@ jobs:
       - name: Upload to S3
         run: |
           # Delete existing files in the S3 bucket
-          aws s3 rm s3://${{S3_BUCKET}} --recursive
+          aws s3 rm s3://$S3_BUCKET --recursive
           
           # Upload the built application to S3 bucket
-          aws s3 sync ./dist/bundle.js s3://${{S3_BUCKET}} --delete
-          aws s3 sync ./index.html s3://${{S3_BUCKET}} --delete
+          aws s3 sync ./dist/bundle.js s3://$S3_BUCKET --delete
+          aws s3 sync ./index.html s3://$S3_BUCKET --delete
 
       # Invalidate CloudFront cache
       - name: Invalidate CloudFront cache

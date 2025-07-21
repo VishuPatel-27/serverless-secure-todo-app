@@ -70,4 +70,4 @@ jobs:
 
       # deploy the application using AWS SAM CLI
       - name: Deploy application
-        run: sam deploy --template-file ./template.yaml --stack-name todo-app-backend --no-fail-on-empty-changeset
+        run: sam deploy --template-file ./template.yaml --no-confirm-changeset --no-fail-on-empty-changeset

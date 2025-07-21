@@ -22,6 +22,9 @@ on:
       - main
     paths:
       - 'todo-app-frontend/**'
+      - '.github/workflows/backend-workflow.yml'
+  workflow_dispatch:
+    # This allows manual triggering of the workflow from the GitHub Actions UI.
 
 # Define the jobs that will run in this workflow
 # Each job runs in a separate environment and can have its own steps.

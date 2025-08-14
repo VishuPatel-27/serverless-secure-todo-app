@@ -21,7 +21,7 @@ on:
     branches:
       - main
     paths:
-      - 'todo-app-frontend/**'
+      - 'sam-backend-todo-app/**'
       - '.github/workflows/backend-workflow.yml'
   # This allows manual triggering of the workflow from the GitHub Actions UI.
   workflow_dispatch:
@@ -31,26 +31,35 @@ on:
 # Jobs run in parallel by defult therefore to ensure they run sequentially,
 # we will use the `needs` keyword to specify dependencies between jobs.
 jobs:
-  # name of the job
-  build-and-deploy:
+  # This job checks out the code, sets up the AWS SAM CLI, configures AWS credentials,
+  # It is the first job in the workflow and must complete before any other jobs can run
+  checkout-and-setup:
+    
     # The job runs on the latest version of Ubuntu
     runs-on: ubuntu-latest
+    
     # Setting environment for the job
     environment:
       name: prod
+    
     # Steps to execute in this job
     steps:
+    
       # Checkout the code from the repository
       - name: Checkout code
         uses: actions/checkout@v3
+    
       # Set up Node.js environment
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '20.18.0'
+          # Use the Node.js version specified in the .nvmrc file
+          node-version-file: '.nvmrc'
+    
       # Set up SAM CLI
       - name: Set up AWS SAM CLI
         uses: aws-actions/setup-sam@v2
+
       # set up aws credentials
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -58,14 +67,14 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
+      
       # Install dependencies
       - name: Install dependencies
         run: |
-          # Navigate to the source directory
-          cd ./src
           # Install Node.js dependencies
           npm install
-     # validate the SAM template
+
+      # validate the SAM template
       - name: Validate SAM template
         run: sam validate --template-file ./template.yaml
 
@@ -73,6 +82,185 @@ jobs:
       - name: Build application
         run: sam build --use-container --template-file ./template.yaml
 
+      # Upload the build artifacts
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-artifacts
+          path: .aws-sam/
+
+  test:
+    # The job runs on the latest version of Ubuntu
+    runs-on: ubuntu-latest
+    env:
+      # set the env variable for this job
+      TODOS_TABLE_NAME: ${{ secrets.TODOS_TABLE_NAME }}
+      LOCALSTACK_ENDPOINT: ${{vars.LOCALSTACK_ENDPOINT}}
+
+    # setting environment for the job
+    environment:
+      name: prod
+    # Define the dependencies
+    # runs after the checkout-and-setup stage
+    needs: checkout-and-setup
+    
+    steps:
+      # Checkout the code from the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Set up Node.js environment
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          # Use the Node.js version specified in the .nvmrc file
+          node-version-file: '.nvmrc'
+      
+      # Install dependencies
+      - name: Install dependencies
+        run: |
+          # Install Node.js dependencies
+          npm install
+      
+      # Install Python and pip for IaC testing
+      - name: Install Python and pip
+        run: |
+          # Install Python
+          sudo apt-get update
+          sudo apt-get install -y python3 python3-pip
+          # Upgrade pip
+          python3 -m pip install --upgrade pip
+
+      # Setup LocalStack for SAST testing
+      - name: Set up LocalStack
+        uses: localstack/localstack-github-action@v1
+        with:
+          services: "s3,dynamodb,lambda,apigateway"
+          debug: true
+      
+      # Starting the localstack service
+      - name: Start LocalStack
+        run: |
+          # Install Docker
+          sudo apt-get update
+          sudo apt-get install -y docker.io
+          # Start Docker service
+          sudo service docker start
+          # Start LocalStack in the background
+          localstack start --host
+          # Wait for LocalStack to be ready
+          echo "Waiting for LocalStack to be ready..."
+          while ! curl -s http://localhost:4566/_localstack/health | grep '"dynamodb": "running"'; do
+            sleep 5
+          done
+
+      # unit test
+      - name: Unit test
+        run: npm test:unit
+      
+      # integration test for createTodoHandler
+      - name: Integration test for createTodoHandler
+        run: npm run test:int-create
+      
+      # integration test for getTodoHandler
+      - name: Integration test for getTodoHandler
+        run: npm run test:int-get
+      
+      # integration test for updateTodoHandler
+      - name: Integration test for updateTodoHandler
+        run: npm run test:int-update
+      
+      # integration test for deleteTodoHandler
+      - name: Integration test for deleteTodoHandler
+        run: npm run test:int-delete
+      
+      # lint the code
+      - name: Lint code
+        run: npm run lint
+
+      # lint and fix code
+      - name: Lint and fix code
+        run: npm run lint:fix
+
+      # Software Composition Analysis Test - SCA
+      - name: SCA Test
+        run: npm audit --audit-level=high
+
+      # Lint Infrastructure as Code (IaC)
+      - name: IaC Test
+        run: |
+          # Install cfn-lint
+          pip install cfn-lint
+          # Run cfn-lint on the SAM template
+          cfn-lint template.yaml
+      
+      # Static Application Security Testing - SAST for IaC
+      - name: SAST Test for IaC
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          # This will add both a CLI output to the console and create a results.sarif file
+          output_format: cli
+          output_file_path: console
+
+  deploy:
+
+    # The job runs on the latest version of Ubuntu
+    runs-on: ubuntu-latest
+
+    # setting environment for the job
+    environment:
+      name: prod
+
+    # Define the dependencies
+    # runs after the test stage
+    needs: test
+
+    steps:
+
+      # Checkout the code from the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # set up aws credentials
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      # Download the build artifacts
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: build-artifacts
+      
       # deploy the application using AWS SAM CLI
       - name: Deploy application
         run: sam deploy --template-file ./template.yaml --no-confirm-changeset --no-fail-on-empty-changeset
+
+  # Clean up job to remove build artifacts after deployment
+  # This job runs after the deploy job to clean up any build artifacts.
+  cleanup:
+    # The job runs on the latest version of Ubuntu
+    runs-on: ubuntu-latest
+
+    # setting environment for the job
+    environment:
+      name: prod
+
+    # Define the dependencies
+    # runs after the deploy stage
+    needs: deploy
+
+    steps:
+
+      # Checkout the code from the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Clean up build artifacts
+      - name: Clean up build artifacts
+        run: |
+          rm -rf .aws-sam/
+          echo "Build artifacts cleaned up."  

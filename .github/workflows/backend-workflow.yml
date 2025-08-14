@@ -133,7 +133,7 @@ jobs:
 
       # Setup LocalStack for SAST testing
       - name: Set up LocalStack
-        uses: localstack/localstack-github-action@v1
+        uses: LocalStack/setup-localstack-action@v0.2.3
         with:
           services: "s3,dynamodb,lambda,apigateway"
           debug: true

@@ -54,7 +54,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           # Use the Node.js version specified in the .nvmrc file
-          node-version-file: '.nvmrc'
+          node-version-file: 'sam-backend-todo-app/.nvmrc'
     
       # Set up SAM CLI
       - name: Set up AWS SAM CLI

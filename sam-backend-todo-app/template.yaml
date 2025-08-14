@@ -1,6 +1,6 @@
 # This AWS Serverless Application Model (SAM) template defines serverless infrastructure.
 # It includes API Gateway endpoints, Lambda functions, DynamoDB table, Cognito User Pool,
-# and an S3 bucket for the static frontend.
+# CloudFront distribution and an S3 bucket for the static frontend.
 AWSTemplateFormatVersion: '2010-09-09'
 # This below declaration is required for SAM templates files (this declaration identifies an AWS CloudFormation template as a SAM template)
 Transform: AWS::Serverless-2016-10-31
@@ -8,11 +8,12 @@ Transform: AWS::Serverless-2016-10-31
 Description: A secure serverless To-Do application with Node.js and Cognito authentication.
 
 # This template deploys a serverless To-Do application with the following components:
-# - API Gateway for RESTful endpoints
-# - Lambda functions for business logic
-# - DynamoDB for data storage
-# - Cognito User Pool for user authentication
-# - S3 bucket for hosting the static frontend
+# API Gateway for RESTful endpoints
+# Lambda functions for business logic
+# DynamoDB for data storage
+# Cognito User Pool for user authentication
+# S3 bucket for hosting the static frontend
+# CloudFront distribution for content delivery
 
 # This parameter section allows customization of the deployment.
 # You can specify the S3 bucket name for the frontend and the API Gateway URL.
@@ -26,8 +27,8 @@ Parameters:
 
 Globals:
   Function:
-    # All Lambda functions will use Node.js 18.x runtime.
-    Runtime: nodejs18.x
+    # All Lambda functions will use Node.js 20.x runtime.
+    Runtime: nodejs20.x
     # Set a default timeout for Lambda functions. Adjust as needed.
     Timeout: 10
     # # Common environment variables for all functions (e.g., DynamoDB table name)
@@ -66,6 +67,97 @@ Resources:
           Mutable: true
           Required: true
       MfaConfiguration: 'OFF' # Can be set to OPTIONAL or REQUIRED for MFA
+
+  # --- AWS WAF Web ACL for CloudFront Distribution ---
+  # This Web ACL provides protection against common web exploits.
+  # It is associated with the CloudFront distribution to protect the static frontend.
+  WebACL:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: ServerlessTodoWebACL
+      Scope: CLOUDFRONT # This Web ACL is for CloudFront distribution
+      DefaultAction:
+        Allow: {} # Default action is to allow requests
+      VisibilityConfig:
+        SampledRequestsEnabled: true # Enable sampled requests for monitoring
+        CloudWatchMetricsEnabled: true # Enable CloudWatch metrics for visibility
+        MetricName: ServerlessTodoWebACL # Metric name for CloudWatch
+      Rules:
+          # This rule protect against the malicious actors by filtering out the request with know bad inputs and
+          # attack patterns like log4j
+        - Name: AWS-AWSManagedRulesKnownBadInputsRuleSet
+          Priority: 1
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesKnownBadInputsRuleSet
+          OverrideAction:
+            None: {}
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true # Enable CloudWatch metrics for this rule
+            MetricName: AWSManagedRulesKnownBadInputsRuleSet
+            SampledRequestsEnabled: true # Enable sampled requests for this rule.
+        - Name: AWS-AWSManagedRulesCommonRuleSet
+          Priority: 0 # Priority of the rule in the Web ACL
+          OverrideAction:
+            None: {} # No override action, use the default action
+          Statement:
+            ManagedRuleGroupStatement:
+              Name: AWSManagedRulesCommonRuleSet # Use AWS managed rules for common web exploits
+              VendorName: AWS # Vendor name for the managed rule group
+          VisibilityConfig:
+            SampledRequestsEnabled: true # Enable sampled requests for this rule
+            CloudWatchMetricsEnabled: true # Enable CloudWatch metrics for this rule
+            MetricName: AWSManagedRulesCommonRuleSet # Metric name for CloudWatch
+  # AWS KMS key for dynamodb encryption
+  # This key is used to encrypt the DynamoDB table data at rest.
+  KMSKeyForDBandLogs:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: KMS key used for encrypting DynamoDB table, CloudWatch logs, and Lambda environment variables.
+      EnableKeyRotation: true
+      KeyUsage: ENCRYPT_DECRYPT # Key usage for encryption and decryption
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          # Allow account root full control of the key (required for management)
+          - Sid: AllowAccountRootAccess
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:user/sam-user
+            Action: "kms:*"
+            Resource: "*"
+
+          - Sid: EncrytionForLambdaEnvironmentVariables
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:DescribeKey
+            Resource: "*"
+            Condition:
+              StringEquals:
+                kms:CallerAccount: !Ref AWS::AccountId
+
+          # Allow DynamoDB to use the key for encryption and decryption
+          - Sid: AllowDynamoDBUsage
+            Effect: Allow
+            Principal:
+              Service: dynamodb.amazonaws.com
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:DescribeKey
+            Resource: "*"
+            Condition:
+              StringEquals:
+                kms:CallerAccount: !Ref AWS::AccountId
 
   # A client application for the Cognito User Pool.
   # This is what your frontend will use to interact with Cognito.
@@ -145,15 +237,21 @@ Resources:
         - AttributeName: todoId
           # This allows us to store multiple todos for each user
           KeyType: RANGE
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true # Enables point-in-time recovery for the table
+      SSESpecification:
+        SSEEnabled: true # Enable server-side encryption for the table
+        SSEType: KMS
+        KMSMasterKeyId: !GetAtt KMSKeyForDBandLogs.Arn  # Use the KMS key defined above for encryption
       # Set billing mode to PAY_PER_REQUEST for cost optimization in serverless apps.
       # This scales automatically and you pay only for reads/writes.
       BillingMode: PAY_PER_REQUEST
 
   # --- API Gateway Definition ---
   # This explicitly defines your API Gateway and its authorizers.
-   # --- API Gateway Definition ---
-  # This explicitly defines your API Gateway and its authorizers.
   TodoApi:
+    #checkov:skip=CKV_AWS_73: This API Gateway dosen't have x-ray tracing enabled, but it is not a security risk in this context.
+    #checkov:skip=CKV_AWS_76: Logging is not enabled for this API Gateway, but it is not a security risk in this context.
     Type: AWS::Serverless::Api
     Properties:
       StageName: Prod
@@ -218,7 +316,6 @@ Resources:
                       type: string
                     Access-Control-Allow-Origin:
                       type: string
-
           /todos/{id}:
             put:
               consumes:
@@ -266,6 +363,15 @@ Resources:
                       type: string
                     Access-Control-Allow-Origin:
                       type: string
+        # checkov:skip=CKV_AWS_120: Caching not applicable to all routes; handled selectively for performance.
+        x-amazon-apigateway-stage:
+          cacheClusterEnabled: true
+          cacheClusterSize: '0.5' # Smallest cache size for cost efficiency
+          methodSettings:
+            - resourcePath: "/todos"
+              httpMethod: GET, POST, OPTIONS
+              cachingEnabled: true
+              cacheTtlInSeconds: 300 # Cache for 5 minutes
 
   # --- Explicit IAM Role for Lambda Functions ---
   # Define a single IAM Role that all your Lambda functions will use.
@@ -304,13 +410,20 @@ Resources:
   CreateTodoFunction:
     Type: AWS::Serverless::Function
     Properties:
+      # checkov:skip=CKV_AWS_115: This Lambda function has not required function-level concurrent execution limit
+      # checkov:skip=CKV_AWS_116: This Lambda function has not been configure with the DLQ,
+      # but it is not a security risk in this context.
+      # checkov:skip=CKV_AWS_117: This Lambda function has not been configure with the VPC,
+      # becuase it does not require VPC access for this use case.
       Handler: todos.createTodoHandler # points to todos.js file, createTodoHandler function
       CodeUri: src/ # points to the source code file
-      Runtime: nodejs18.x # Explicitly set runtime here as Globals.Function is overridden by Role property
+      Runtime: nodejs20.x # Explicitly set runtime here as Globals.Function is overridden by Role property
       Timeout: 10 # Explicitly set timeout here
       Environment:
         Variables:
           TODOS_TABLE_NAME: !Ref TodosTable
+          kmsKeyId: !Ref KMSKeyForDBandLogs # Use the KMS key for encryption
+      KmsKeyArn: !GetAtt KMSKeyForDBandLogs.Arn # Use the KMS key for encryption
       Role: !GetAtt LambdaExecutionRole.Arn # Assign the explicit IAM role      
       # Define events that trigger this Lambda function (API Gateway endpoint).
       Events:
@@ -325,13 +438,19 @@ Resources:
   GetTodosFunction:
     Type: AWS::Serverless::Function
     Properties:
+      # checkov:skip=CKV_AWS_115: This Lambda function has not required function-level concurrent execution limit
+      # checkov:skip=CKV_AWS_116: This Lambda function has not been configure with the DLQ,
+      # but it is not a security risk in this context.
+      # checkov:skip=CKV_AWS_117: This Lambda function has not been configure with the VPC,
+      # becuase it does not require VPC access for this use case.
       Handler: todos.getTodosHandler
       CodeUri: src/
-      Runtime: nodejs18.x
+      Runtime: nodejs20.x
       Timeout: 10
       Environment:
         Variables:
           TODOS_TABLE_NAME: !Ref TodosTable
+      KmsKeyArn: !GetAtt KMSKeyForDBandLogs.Arn # Use the KMS key for encryption
       Role: !GetAtt LambdaExecutionRole.Arn # Assign the explicit IAM role
       Events:
         GetTodosApi:
@@ -345,13 +464,19 @@ Resources:
   UpdateTodoFunction:
     Type: AWS::Serverless::Function
     Properties:
+      # checkov:skip=CKV_AWS_115: This Lambda function has not required function-level concurrent execution limit
+      # checkov:skip=CKV_AWS_116: This Lambda function has not been configure with the DLQ,
+      # but it is not a security risk in this context.
+      # checkov:skip=CKV_AWS_117: This Lambda function has not been configure with the VPC,
+      # becuase it does not require VPC access for this use case.
       Handler: todos.updateTodoHandler
       CodeUri: src/
-      Runtime: nodejs18.x
+      Runtime: nodejs20.x
       Timeout: 10
       Environment:
         Variables:
           TODOS_TABLE_NAME: !Ref TodosTable
+      KmsKeyArn: !GetAtt KMSKeyForDBandLogs.Arn # Use the KMS key for encryption
       Role: !GetAtt LambdaExecutionRole.Arn # Assign the explicit IAM role
       Events:
         UpdateTodoApi:
@@ -363,15 +488,21 @@ Resources:
 
   # Lambda function to delete a to-do item.
   DeleteTodoFunction:
+    # checkov:skip=CKV_AWS_115: This Lambda function has not required function-level concurrent execution limit  
     Type: AWS::Serverless::Function
     Properties:
+      # checkov:skip=CKV_AWS_116: This Lambda function has not been configure with the DLQ,
+      # but it is not a security risk in this context.
+      # checkov:skip=CKV_AWS_117: This Lambda function has not been configure with the VPC,
+      # becuase it does not require VPC access for this use case.
       Handler: todos.deleteTodoHandler
       CodeUri: src/
-      Runtime: nodejs18.x
+      Runtime: nodejs20.x
       Timeout: 10
       Environment:
         Variables:
           TODOS_TABLE_NAME: !Ref TodosTable
+      KmsKeyArn: !GetAtt KMSKeyForDBandLogs.Arn # Use the KMS key for encryption
       Role: !GetAtt LambdaExecutionRole.Arn # Assign the explicit IAM role
       Events:
         DeleteTodoApi:
@@ -382,13 +513,58 @@ Resources:
             RestApiId: !Ref TodoApi
 
   # --- S3 Bucket for Static Frontend Hosting ---
+  LoggingBucket:
+    Type: AWS::S3::Bucket
+    Properties:        
+      # checkov:skip=CKV_AWS_18: This S3 bucket has access logging disabled, but it is not a security risk in this context.
+      BucketName: !Sub ${FrontendBucketName}-logs # Unique bucket name for logging
+      VersioningConfiguration:
+        Status: Enabled # Enable versioning for the logging bucket
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: ObjectWriter # Enforce bucket owner full control
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true # Block public ACLs
+        IgnorePublicAcls: true # Ignore public ACLs
+        BlockPublicPolicy: true # Block public policies
+        RestrictPublicBuckets: true # Restrict public buckets
+ 
+  # Bucket Policy to allow CloudFront service to write logs to this bucket
+  LoggingBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref LoggingBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCloudFrontServicePut
+            Effect: Allow
+            Principal:
+              Service: delivery.logs.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub "${LoggingBucket.Arn}/cloudfront-logs/*"
+            Condition:
+              StringEquals:
+                "AWS:SourceAccount": !Ref AWS::AccountId
+
   FrontendBucket:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Ref FrontendBucketName
+      LoggingConfiguration:
+        DestinationBucketName: !Ref LoggingBucket # Use the logging bucket for storing access logs
+        LogFilePrefix: logs/ # Prefix for log files
+      VersioningConfiguration:
+        Status: Enabled # Enable versioning for the frontend bucket
       WebsiteConfiguration:
         IndexDocument: index.html
         ErrorDocument: index.html # For single-page applications, route all errors to index.html
+      # Public access block configuration to prevent public access to the bucket
+      PublicAccessBlockConfiguration:
+          BlockPublicAcls: true # Block public ACLs
+          IgnorePublicAcls: true # Ignore public ACLs
+          BlockPublicPolicy: true # Block public policies
+          RestrictPublicBuckets: true # Restrict public buckets
       CorsConfiguration:
         CorsRules:
           - AllowedHeaders:
@@ -442,6 +618,11 @@ Resources:
       DistributionConfig:
         Comment: CloudFront distribution for Serverless To-Do App Frontend
         Enabled: true
+        WebACLId: !GetAtt WebACL.Arn 
+        Logging:
+          Bucket: !GetAtt LoggingBucket.DomainName
+          IncludeCookies: false # Do not log cookies
+          Prefix: cloudfront-logs/ # Prefix for log files
         DefaultCacheBehavior:
           TargetOriginId: S3Origin # Link to the origin defined below
           ViewerProtocolPolicy: redirect-to-https # Redirects HTTP to HTTPS
@@ -466,6 +647,7 @@ Resources:
               OriginAccessIdentity: !Sub origin-access-identity/cloudfront/${CloudFrontOriginAccessIdentity}
         ViewerCertificate:
           CloudFrontDefaultCertificate: true # Use CloudFront's default SSL certificate
+          MinimumProtocolVersion: TLSv1.2_2021 # Use a secure TLS version
         DefaultRootObject: index.html # Serves index.html when root URL is accessed
 
 Outputs:

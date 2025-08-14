@@ -19,10 +19,8 @@ const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const {
   DynamoDBDocumentClient,
   PutCommand,
-  GetCommand,
   UpdateCommand,
   DeleteCommand,
-  ScanCommand, // Use ScanCommand with caution for large tables
   QueryCommand, // Prefer QueryCommand for user-specific data
 } = require("@aws-sdk/lib-dynamodb");
 
@@ -34,8 +32,23 @@ const {
  */
 const { v4: uuidv4 } = require('uuid');
 
-// Initialize DynamoDB client and document client
-const client = new DynamoDBClient({});
+/**
+ * This client is configured to connect to a local DynamoDB instance
+ * for testing purposes. In production, it will connect to AWS DynamoDB.
+ */
+const client = new DynamoDBClient({
+  /**
+   * The endpoint is set to the local DynamoDB instance if LOCALSTACK_ENDPOINT is defined.
+   * This allows for local development and testing without needing to deploy to AWS.
+   * In production, this will be undefined, and the client will connect to AWS DynamoDB.
+   */
+  endpoint: process.env.LOCALSTACK_ENDPOINT || undefined,
+  region: process.env.AWS_REGION || 'us-east-1',
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'test',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'test',
+  },
+});
 const docClient = DynamoDBDocumentClient.from(client);
 
 // Get the DynamoDB table name from environment variables
@@ -70,7 +83,7 @@ const generateResponse = (statusCode, body) => {
  * This is crucial for single-page applications interacting with API Gateway.
  */
 exports.optionsHandler = async (event) => {
-  console.log("Received OPTIONS request:", event);
+  // console.log("Received OPTIONS request:", event);
   return generateResponse(200, {});
 };
 
@@ -88,7 +101,7 @@ exports.optionsHandler = async (event) => {
  * @returns {object} - The response object containing the status code and body.
  */
 exports.createTodoHandler = async (event) => {
-  console.log("Received createTodo request:", event);
+  // console.log("Received createTodo request:", event);
 
   try {
     
@@ -98,7 +111,7 @@ exports.createTodoHandler = async (event) => {
      * sub is the standard claim for user ID in Cognito.
      * If the user ID is not found, return a 401 Unauthorized response.
      */
-    const userId = event.requestContext.authorizer.claims.sub; 
+    const userId = event.requestContext?.authorizer?.claims?.sub;
     if (!userId) {
       return generateResponse(401, { message: "Unauthorized: User ID not found in token." });
     }
@@ -130,12 +143,12 @@ exports.createTodoHandler = async (event) => {
       },
     };
 
-    console.log("Putting item into DynamoDB:", params.Item);
+    // console.log("Putting item into DynamoDB:", params.Item);
     await docClient.send(new PutCommand(params));
 
     return generateResponse(201, { message: "To-Do item created successfully.", todo: params.Item });
   } catch (error) {
-    console.error("Error creating To-Do item:", error);
+    // console.error("Error creating To-Do item:", error);
     // Return a generic error message for security, log detailed error internally
     return generateResponse(500, { message: "Failed to create To-Do item. Please try again later." });
   }
@@ -149,7 +162,7 @@ exports.createTodoHandler = async (event) => {
  * @returns {object} - The response object containing the status code and body.
  */
 exports.getTodosHandler = async (event) => {
-  console.log("Received getTodos request:", event);
+  // console.log("Received getTodos request:", event);
 
   try {
 
@@ -173,13 +186,13 @@ exports.getTodosHandler = async (event) => {
       },
     };
 
-    console.log("Querying DynamoDB with params:", params);
+    // console.log("Querying DynamoDB with params:", params);
     const data = await docClient.send(new QueryCommand(params));
     const todos = data.Items || [];
 
     return generateResponse(200, { todos: todos });
   } catch (error) {
-    console.error("Error getting To-Do items:", error);
+    // console.error("Error getting To-Do items:", error);
     return generateResponse(500, { message: "Failed to retrieve To-Do items. Please try again later." });
   }
 };
@@ -196,7 +209,7 @@ exports.getTodosHandler = async (event) => {
  * @param {string} event.body - JSON string of updates (e.g., { "status": "completed" }).
  */
 exports.updateTodoHandler = async (event) => {
-  console.log("Received updateTodo request:", event);
+  // console.log("Received updateTodo request:", event);
 
   try {
     const userId = event.requestContext?.authorizer?.claims?.sub;
@@ -264,7 +277,7 @@ exports.updateTodoHandler = async (event) => {
       ExpressionAttributeNames: expressionAttributeNames,
     };
 
-    console.log("Updating item in DynamoDB with params:", params);
+    // console.log("Updating item in DynamoDB with params:", params);
     const data = await docClient.send(new UpdateCommand(params));
 
     if (!data.Attributes) {
@@ -273,7 +286,7 @@ exports.updateTodoHandler = async (event) => {
 
     return generateResponse(200, { message: "To-Do item updated successfully.", todo: data.Attributes });
   } catch (error) {
-    console.error("Error updating To-Do item:", error);
+    // console.error("Error updating To-Do item:", error);
     if (error.name === 'ValidationException' && error.message.includes('The provided key element does not match the schema')) {
       return generateResponse(400, { message: "Invalid To-Do ID or data format." });
     }
@@ -295,7 +308,7 @@ exports.updateTodoHandler = async (event) => {
  * @returns {object} - The response object containing the status code and body.
  */
 exports.deleteTodoHandler = async (event) => {
-  console.log("Received deleteTodo request:", event);
+  // console.log("Received deleteTodo request:", event);
 
   try {
     const userId = event.requestContext?.authorizer?.claims?.sub;
@@ -317,7 +330,7 @@ exports.deleteTodoHandler = async (event) => {
       ReturnValues: 'ALL_OLD', // To check if an item was actually deleted
     };
 
-    console.log("Deleting item from DynamoDB with params:", params);
+    // console.log("Deleting item from DynamoDB with params:", params);
     const data = await docClient.send(new DeleteCommand(params));
 
     if (!data.Attributes) {
@@ -326,7 +339,7 @@ exports.deleteTodoHandler = async (event) => {
 
     return generateResponse(200, { message: "To-Do item deleted successfully." });
   } catch (error) {
-    console.error("Error deleting To-Do item:", error);
+    // console.error("Error deleting To-Do item:", error);
     return generateResponse(500, { message: "Failed to delete To-Do item. Please try again later." });
   }
 };

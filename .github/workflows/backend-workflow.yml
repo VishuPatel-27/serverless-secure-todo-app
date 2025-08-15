@@ -12,7 +12,7 @@ name: Todo App Backend Workflow
 # This section sets the default working directory for all run steps in the workflow.
 defaults:
   run:
-    working-directory: sam-backend-todo-app/
+    working-directory: sam-backend-todo-app
 
 # Trigger conditions for the workflow
 # The workflow is triggered on pushes and pull requests to the main branch.
@@ -88,7 +88,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts
-          path: sam-backend-todo-app/.aws-sam/
+          path: sam-backend-todo-app/.aws-sam
 
   test:
     # The job runs on the latest version of Ubuntu
@@ -142,11 +142,6 @@ jobs:
       # Starting the localstack service
       - name: Start LocalStack
         run: |
-          # Install Docker
-          sudo apt-get update
-          sudo apt-get install -y docker.io
-          # Start Docker service
-          sudo service docker start
           # Start LocalStack in the background
           localstack start --host
           # Wait for LocalStack to be ready
@@ -263,5 +258,5 @@ jobs:
       # Clean up build artifacts
       - name: Clean up build artifacts
         run: |
-          rm -rf sam-backend-todo-app/.aws-sam/
+          rm -rf sam-backend-todo-app/.aws-sam
           echo "Build artifacts cleaned up."  

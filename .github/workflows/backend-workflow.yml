@@ -88,7 +88,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts
-          path: sam-backend-todo-app/.aws-sam
+          path: serverless-secure-todo-app/sam-backend-todo-app/.aws-sam
 
   test:
     # The job runs on the latest version of Ubuntu
@@ -97,6 +97,7 @@ jobs:
       # set the env variable for this job
       TODOS_TABLE_NAME: ${{ secrets.TODOS_TABLE_NAME }}
       LOCALSTACK_ENDPOINT: ${{vars.LOCALSTACK_ENDPOINT}}
+      AWS_REGION: ${{vars.AWS_REGION}}
 
     # setting environment for the job
     environment:

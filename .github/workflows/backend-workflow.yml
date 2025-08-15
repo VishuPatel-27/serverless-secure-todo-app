@@ -81,7 +81,7 @@ jobs:
 
       # Build the application using AWS SAM CLI
       - name: Build application
-        run: sam build --use-container --template-file ./template.yaml
+        run: sam build --use-container --template-file ./template.yaml --build-dir sam-backend-todo-app/.aws-sam
 
       # Upload the build artifacts
       - name: Upload build artifacts
@@ -138,7 +138,7 @@ jobs:
 
       # unit test
       - name: Unit test
-        run: npm test:unit
+        run: npm run test:unit
       
       # integration test for createTodoHandler
       - name: Integration test for createTodoHandler

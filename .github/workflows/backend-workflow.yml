@@ -12,7 +12,7 @@ name: Todo App Backend Workflow
 # This section sets the default working directory for all run steps in the workflow.
 defaults:
   run:
-    working-directory: sam-backend-todo-app/
+    working-directory: ./sam-backend-todo-app
 
 # Trigger conditions for the workflow
 # The workflow is triggered on pushes and pull requests to the main branch.
@@ -54,7 +54,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           # Use the Node.js version specified in the .nvmrc file
-          node-version-file: 'sam-backend-todo-app/.nvmrc'
+          node-version-file: './.nvmrc'
     
       # Set up SAM CLI
       - name: Set up AWS SAM CLI
@@ -87,7 +87,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts
-          path: .aws-sam/
+          path: ./.aws-sam
 
   test:
     # The job runs on the latest version of Ubuntu
@@ -114,7 +114,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           # Use the Node.js version specified in the .nvmrc file
-          node-version-file: '.nvmrc'
+          node-version-file: './.nvmrc'
       
       # Install dependencies
       - name: Install dependencies
@@ -262,5 +262,5 @@ jobs:
       # Clean up build artifacts
       - name: Clean up build artifacts
         run: |
-          rm -rf .aws-sam/
+          rm -rf ./.aws-sam/
           echo "Build artifacts cleaned up."  

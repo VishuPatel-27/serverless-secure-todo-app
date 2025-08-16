@@ -75,17 +75,6 @@ module.exports = {
         include: /node_modules/, // Only apply to .mjs files within node_modules
         type: 'javascript/auto', // Treat as standard JavaScript module
       },
-      // If you were using Babel for older browser support, you'd add it here:
-      // {
-      //   test: /\.js$/,
-      //   exclude: /node_modules/,
-      //   // use: {
-      //   //   loader: 'babel-loader',
-      //   //   options: {
-      //   //     presets: ['@babel/preset-env']
-      //   //   }
-      //   // }
-      // }
     ],
   },
 };

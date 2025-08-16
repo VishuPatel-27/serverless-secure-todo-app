@@ -15,7 +15,7 @@ defaults:
     working-directory: todo-app-frontend/
 
 # Trigger conditions for the workflow
-# The workflow is triggered on pushes and pull requests to the main branch.
+# The workflow is triggered on pushes to the main branch.
 on:
   push:
     branches:
@@ -24,34 +24,39 @@ on:
       - 'todo-app-frontend/**'
       - '.github/workflows/frontend-workflow.yml'
   # This allows manual triggering of the workflow from the GitHub Actions UI.
-  workflow_dispatch:
-    
+  workflow_dispatch: {}
+
+# Permissions for the workflow
+# This section defines the permissions required for the workflow.
+permissions: read-all
 
 # Define the jobs that will run in this workflow
 # Each job runs in a separate environment and can have its own steps.
 # Jobs run in parallel by defult therefore to ensure they run sequentially,
 # we will use the `needs` keyword to specify dependencies between jobs.
 jobs:
-  # name of the job
-  build-and-deploy:
+  # This job checks out the code, sets up the AWS SAM CLI, configures AWS credentials,
+  # retrieves CloudFormation stack outputs, and uploads the .env file as an artifact.
+  # It is the first job in the workflow and must complete before any other jobs can run
+  checkout-and-setup:
+    
     # The job runs on the latest version of Ubuntu
     runs-on: ubuntu-latest
+    
     # Setting environment for the job
     environment:
       name: prod
+    
     # Steps to execute in this job
     steps:
       # Checkout the code from the repository
       - name: Checkout code
         uses: actions/checkout@v3
-      # Set up Node.js environment
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20.18.0'
+    
       # Set up SAM CLI
       - name: Set up AWS SAM CLI
         uses: aws-actions/setup-sam@v2
+    
       # set up aws credentials
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -59,13 +64,117 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
-      # run bash script
+    
+      # retrieve the CloudFormation stack outputs and save them to a .env file
       - name: configure environment variables
         run: |
           aws cloudformation describe-stacks \
           --stack-name ${{ vars.STACK_NAME }} \
           --query "Stacks[0].Outputs" \
           --output json | jq -r '.[] | "\(.OutputKey)=\(.OutputValue)"' > .env
+    
+      # This step uploads the .env file as an artifact so it can be used in later steps.
+      # The artifact is named 'env' and the file is located in the todo-app-frontend directory.
+      # This step temporarily uploads files to GitHub's own storage, isolated for current workflow only
+      - name: Upload .env file
+        uses: actions/upload-artifact@v4
+        with:
+          name: env
+          include-hidden-files: true
+          path: todo-app-frontend/.env
+          # This step ensures that the artifact is retained for 1 day
+          retention-days: 1
+
+  # This job runs tests for the frontend application.
+  # It is defined to run after the checkout-and-setup job.
+  test:
+    # The job runs on the latest version of Ubuntu
+    runs-on: ubuntu-latest
+
+    # setting environment for the job
+    environment:
+      name: prod
+    # Define the dependencies
+    # runs after the checkout-and-setup stage
+    needs: checkout-and-setup
+    
+    steps:
+      # Checkout the code from the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Set up Node.js environment
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          # Use the Node.js version specified in the .nvmrc file
+          node-version-file: 'todo-app-frontend/.nvmrc'
+      
+      # Install dependencies
+      - name: Install dependencies
+        run: |
+          # Install Node.js dependencies
+          npm install
+      
+      # Run the unit tests
+      - name: Running unit tests
+        run: |
+          # Run the tests using Jest
+          npm test
+      
+      # Run the linter
+      - name: Run linter
+        run: |
+          # Run the linter using ESLint
+          npm run lint
+      
+      # Run the linter with auto-fix
+      - name: Run linter with auto-fix  
+        run: |
+          # Run the linter with auto-fix using ESLint
+          npm run lint:fix
+      
+      # Run the Software Composition Analysis (SCA) tool
+      - name: Run SCA tool
+        run: |
+          # Run the SCA tool to check for vulnerabilities
+          npm audit --audit-level=high
+
+  # This job builds the frontend application using webpack.
+  # It installs the necessary dependencies, builds the application, and uploads the build artifacts.
+  # It will only run if the test job is successful.
+  build:
+    # The job runs on the latest version of Ubuntu
+    runs-on: ubuntu-latest
+    
+    # Define the dependencies
+    # runs after the test stage
+    needs: test
+    
+    # Setting environment for the job
+    environment:
+      name: prod
+    
+    steps:
+      # Checkout the code from the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Set up Node.js environment
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          # Use the Node.js version specified in the .nvmrc file
+          node-version-file: 'todo-app-frontend/.nvmrc'
+      
+      # Download the env file form artifacts
+      - name: Download env file
+        uses: actions/download-artifact@v4
+        with:
+          name: env
+          include-hidden-files: true
+          path: todo-app-frontend/
+
       # Load .env variables into the workflow environment
       - name: Export .env to environment
         run: |
@@ -75,16 +184,90 @@ jobs:
           echo "APIENDPOINT=$ApiEndPoint" >> $GITHUB_ENV
           echo "S3_BUCKET=$FrontendBucketName" >> $GITHUB_ENV
           echo "CLOUDFRONT_DIST_ID=$CloudFrontDistributionId" >> $GITHUB_ENV
+          echo "CLOUDFRONT_DOMAIN_NAME=$CloudFrontDistributionURL" >> $GITHUB_ENV
+
       # Install dependencies
       - name: Install dependencies
         run: |
           # Install Node.js dependencies
           npm install
+
       # Build the application using webpack
       - name: Build application
         run: |
           # Build the application using webpack
           npm run build
+
+      # Upload the build artifacts
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: |
+            todo-app-frontend/dist/bundle.js
+            todo-app-frontend/index.html
+          # This step ensures that the artifacts are retained for 1 day
+          retention-days: 1
+
+  # This job deploys the built application to an S3 bucket and invalidates the CloudFront cache.
+  # It runs after the build job and requires the build artifacts and .env file.
+  deploy:
+    # The job runs on the latest version of Ubuntu
+    runs-on: ubuntu-latest
+    
+    # define the dependencies
+    # runs after the build stage
+    needs: build
+
+    # Setting environment for the job
+    environment:
+      name: prod
+
+    steps:
+
+      # Checkout the code from the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Download .env file
+      - name: Download .env file
+        uses: actions/download-artifact@v4
+        with: 
+          name: env
+          include-hidden-files: true
+          path: todo-app-frontend/
+      
+      # Download build artifacts
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          include-hidden-files: true
+          path: todo-app-frontend/
+
+      # Load .env variables into the workflow environment
+      - name: Export .env to environment
+        run: |
+          export $(cat .env | xargs)
+          echo "USERPOOL_ID=$UserPoolId" >> $GITHUB_ENV
+          echo "USERPOOL_CLIENT_ID=$UserPoolClientId" >> $GITHUB_ENV
+          echo "APIENDPOINT=$ApiEndPoint" >> $GITHUB_ENV
+          echo "S3_BUCKET=$FrontendBucketName" >> $GITHUB_ENV
+          echo "CLOUDFRONT_DIST_ID=$CloudFrontDistributionId" >> $GITHUB_ENV
+          echo "CLOUDFRONT_DOMAIN_NAME=$CloudFrontDistributionURL" >> $GITHUB_ENV
+
+      # Set up SAM CLI
+      - name: Set up AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
+    
+      # set up aws credentials
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+
       # Upload the built application to S3
       - name: Upload to S3
         run: |
@@ -100,4 +283,27 @@ jobs:
         run: |
           # Invalidate the CloudFront cache to ensure the latest version is served
           aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_DIST_ID --paths "/*"
+
+  # This job cleans up the artifacts created during the workflow.
+  # It runs after the deploy job and is used to remove any temporary files or artifacts.
+  cleanup:
+    # The job runs on the latest version of Ubuntu
+    runs-on: ubuntu-latest
+
+    # Define the dependencies
+    # runs after the deploy stage
+    needs: deploy
+
+    steps:
+      # Checkout the code from the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Clean up artifacts
+      - name: Clean up artifacts
+        run: |
+          # Remove the .env file and build artifacts
+          rm -f todo-app-frontend/.env
+          rm -rf todo-app-frontend/dist
+          echo "Cleanup completed."
 

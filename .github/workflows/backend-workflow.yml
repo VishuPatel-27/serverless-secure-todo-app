@@ -87,14 +87,14 @@ jobs:
       - name: Debug filesystem
         run: |
               pwd
-              ls -R .
+              ls -ltra
 
       # Upload the build artifacts
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts
-          path: serverless-secure-todo-app/.aws-sam
+          path: ./.aws-sam
 
   test:
     # The job runs on the latest version of Ubuntu

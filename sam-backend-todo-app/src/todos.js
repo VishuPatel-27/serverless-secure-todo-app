@@ -32,10 +32,6 @@ const {
  */
 const { v4: uuidv4 } = require('uuid');
 
-/**
- * This client is configured to connect to a local DynamoDB instance
- * for testing purposes. In production, it will connect to AWS DynamoDB.
- */
 const client = new DynamoDBClient({
   /**
    * The endpoint is set to the local DynamoDB instance if LOCALSTACK_ENDPOINT is defined.
@@ -48,7 +44,7 @@ const client = new DynamoDBClient({
     accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'test',
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'test',
   },
-});
+}); 
 const docClient = DynamoDBDocumentClient.from(client);
 
 // Get the DynamoDB table name from environment variables

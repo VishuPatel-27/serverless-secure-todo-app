@@ -1,5 +1,4 @@
 /**
- * @jest-environment jsdom
  * This file contains tests for the todoHandlers module.
  * It mocks AWS Amplify Auth and API modules, and tests the functionality of creating,
  * fetching, updating, and deleting todos.

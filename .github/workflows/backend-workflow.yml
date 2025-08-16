@@ -249,4 +249,4 @@ jobs:
       - name: Clean up build artifacts
         run: |
           rm -rf sam-backend-todo-app/.aws-sam
-          echo "Build artifacts cleaned up."  
+          echo "Build artifacts cleaned up." 

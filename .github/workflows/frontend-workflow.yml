@@ -80,7 +80,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: env
-          include-hidden-files: true
           path: todo-app-frontend/.env
           # This step ensures that the artifact is retained for 1 day
           retention-days: 1
@@ -172,7 +171,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: env
-          include-hidden-files: true
           path: todo-app-frontend/
 
       # Load .env variables into the workflow environment
@@ -234,7 +232,6 @@ jobs:
         uses: actions/download-artifact@v4
         with: 
           name: env
-          include-hidden-files: true
           path: todo-app-frontend/
       
       # Download build artifacts
@@ -242,7 +239,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: dist
-          include-hidden-files: true
           path: todo-app-frontend/
 
       # Load .env variables into the workflow environment

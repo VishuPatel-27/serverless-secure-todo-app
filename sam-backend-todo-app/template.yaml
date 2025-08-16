@@ -124,11 +124,12 @@ Resources:
           - Sid: AllowAccountRootAccess
             Effect: Allow
             Principal:
-              AWS: !Sub arn:aws:iam::${AWS::AccountId}:user/sam-user
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
             Action: "kms:*"
             Resource: "*"
 
-          - Sid: EncrytionForLambdaEnvironmentVariables
+          # Allow lambda functions to use the key for encryption and decryption of dynamodb table and env variables
+          - Sid: AllowLambdaUseOfKey
             Effect: Allow
             Principal:
               Service: lambda.amazonaws.com
@@ -139,9 +140,6 @@ Resources:
               - kms:GenerateDataKey*
               - kms:DescribeKey
             Resource: "*"
-            Condition:
-              StringEquals:
-                kms:CallerAccount: !Ref AWS::AccountId
 
           # Allow DynamoDB to use the key for encryption and decryption
           - Sid: AllowDynamoDBUsage
@@ -155,10 +153,7 @@ Resources:
               - kms:GenerateDataKey*
               - kms:DescribeKey
             Resource: "*"
-            Condition:
-              StringEquals:
-                kms:CallerAccount: !Ref AWS::AccountId
-
+    
   # A client application for the Cognito User Pool.
   # This is what your frontend will use to interact with Cognito.
   CognitoUserPoolClient:
@@ -405,6 +400,28 @@ Resources:
                   - dynamodb:BatchGetItem
                   - dynamodb:BatchWriteItem
                 Resource: !GetAtt TodosTable.Arn # Grants access specifically to your TodosTable ARN
+        - PolicyName: KMSKeyAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - kms:Encrypt
+                  - kms:Decrypt
+                  - kms:ReEncrypt*
+                  - kms:GenerateDataKey*
+                  - kms:DescribeKey
+                Resource: !GetAtt KMSKeyForDBandLogs.Arn # Grants access to the KMS key for encryption/decryption
+        - PolicyName: CloudWatchLogsPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+                - Effect: Allow
+                  Action:
+                    - logs:CreateLogGroup
+                    - logs:CreateLogStream
+                    - logs:PutLogEvents
+                  Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/* # Grants access to all Lambda log groups
 
   # Lambda function to create a new to-do item.
   CreateTodoFunction:
@@ -415,8 +432,9 @@ Resources:
       # but it is not a security risk in this context.
       # checkov:skip=CKV_AWS_117: This Lambda function has not been configure with the VPC,
       # becuase it does not require VPC access for this use case.
-      Handler: todos.createTodoHandler # points to todos.js file, createTodoHandler function
-      CodeUri: src/ # points to the source code file
+      #checkov:skip=CKV_AWS_158: Logs encryption with CMK not required for this project
+      CodeUri: ./ # points to the source code file
+      Handler: src/todos.createTodoHandler # points to todos.js file, createTodoHandler function
       Runtime: nodejs20.x # Explicitly set runtime here as Globals.Function is overridden by Role property
       Timeout: 10 # Explicitly set timeout here
       Environment:
@@ -443,8 +461,9 @@ Resources:
       # but it is not a security risk in this context.
       # checkov:skip=CKV_AWS_117: This Lambda function has not been configure with the VPC,
       # becuase it does not require VPC access for this use case.
-      Handler: todos.getTodosHandler
-      CodeUri: src/
+      #checkov:skip=CKV_AWS_158: Logs encryption with CMK not required for this project
+      CodeUri: ./
+      Handler: src/todos.getTodosHandler
       Runtime: nodejs20.x
       Timeout: 10
       Environment:
@@ -469,8 +488,9 @@ Resources:
       # but it is not a security risk in this context.
       # checkov:skip=CKV_AWS_117: This Lambda function has not been configure with the VPC,
       # becuase it does not require VPC access for this use case.
-      Handler: todos.updateTodoHandler
-      CodeUri: src/
+      #checkov:skip=CKV_AWS_158: Logs encryption with CMK not required for this project
+      CodeUri: ./
+      Handler: src/todos.updateTodoHandler
       Runtime: nodejs20.x
       Timeout: 10
       Environment:
@@ -495,8 +515,9 @@ Resources:
       # but it is not a security risk in this context.
       # checkov:skip=CKV_AWS_117: This Lambda function has not been configure with the VPC,
       # becuase it does not require VPC access for this use case.
-      Handler: todos.deleteTodoHandler
-      CodeUri: src/
+      #checkov:skip=CKV_AWS_158: Logs encryption with CMK not required for this project
+      CodeUri: ./
+      Handler: src/todos.deleteTodoHandler
       Runtime: nodejs20.x
       Timeout: 10
       Environment:

@@ -26,6 +26,8 @@ on:
   # This allows manual triggering of the workflow from the GitHub Actions UI.
   workflow_dispatch: {}
 
+# Permissions for the workflow
+# This section defines the permissions required for the workflow.
 permissions: read-all
     
 # Define the jobs that will run in this workflow
@@ -82,12 +84,7 @@ jobs:
 
       # Build the application using AWS SAM CLI
       - name: Build application
-        run: sam build --use-container --template-file ./template.yaml
-      
-      - name: Debug filesystem
-        run: |
-              pwd
-              ls -ltra
+        run: sam build --use-container --template-file ./template.yaml  
 
       # Upload the build artifacts
       - name: Upload build artifacts
@@ -130,15 +127,6 @@ jobs:
         run: |
           # Install Node.js dependencies
           npm install
-      
-      # Install Python and pip for IaC testing
-      - name: Install Python and pip
-        run: |
-          # Install Python
-          sudo apt-get update
-          sudo apt-get install -y python3 python3-pip
-          # Upgrade pip
-          python3 -m pip install --upgrade pip
 
       # Setup LocalStack for SAST testing
       - name: Set up LocalStack
@@ -261,4 +249,4 @@ jobs:
       - name: Clean up build artifacts
         run: |
           rm -rf sam-backend-todo-app/.aws-sam
-          echo "Build artifacts cleaned up."  
+          echo "Build artifacts cleaned up." 

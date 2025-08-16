@@ -24,9 +24,10 @@ on:
       - 'sam-backend-todo-app/**'
       - '.github/workflows/backend-workflow.yml'
   # This allows manual triggering of the workflow from the GitHub Actions UI.
-  workflow_dispatch:
-    
+  workflow_dispatch: {}
 
+permissions: read-all
+    
 # Define the jobs that will run in this workflow
 # Each job runs in a separate environment and can have its own steps.
 # Jobs run in parallel by defult therefore to ensure they run sequentially,
@@ -81,7 +82,9 @@ jobs:
 
       # Build the application using AWS SAM CLI
       - name: Build application
-        run: sam build --use-container --template-file ./template.yaml --build-dir ./.aws-sam
+        run: |
+            sam build --use-container --template-file ./template.yaml
+            find . -name ".aws-sam/template.yaml" -print
 
       # Upload the build artifacts
       - name: Upload build artifacts

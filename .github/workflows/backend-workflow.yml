@@ -82,16 +82,19 @@ jobs:
 
       # Build the application using AWS SAM CLI
       - name: Build application
+        run: sam build --use-container --template-file ./template.yaml
+      
+      - name: Debug filesystem
         run: |
-            sam build --use-container --template-file ./template.yaml
-            find . -name ".aws-sam/template.yaml" -print
+              pwd
+              ls -R .
 
       # Upload the build artifacts
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts
-          path: sam-backend-todo-app/.aws-sam
+          path: .aws-sam
 
   test:
     # The job runs on the latest version of Ubuntu
@@ -192,6 +195,9 @@ jobs:
       # Static Application Security Testing - SAST for IaC
       - name: SAST Test for IaC
         uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: sam-backend-todo-app/
+          file: sam-backend-todo-app/template.yaml
 
   deploy:
 

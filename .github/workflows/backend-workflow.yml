@@ -12,7 +12,7 @@ name: Todo App Backend Workflow
 # This section sets the default working directory for all run steps in the workflow.
 defaults:
   run:
-    working-directory: sam-backend-todo-app/
+    working-directory: sam-backend-todo-app
 
 # Trigger conditions for the workflow
 # The workflow is triggered on pushes and pull requests to the main branch.
@@ -24,9 +24,12 @@ on:
       - 'sam-backend-todo-app/**'
       - '.github/workflows/backend-workflow.yml'
   # This allows manual triggering of the workflow from the GitHub Actions UI.
-  workflow_dispatch:
-    
+  workflow_dispatch: {}
 
+# Permissions for the workflow
+# This section defines the permissions required for the workflow.
+permissions: read-all
+    
 # Define the jobs that will run in this workflow
 # Each job runs in a separate environment and can have its own steps.
 # Jobs run in parallel by defult therefore to ensure they run sequentially,
@@ -81,13 +84,14 @@ jobs:
 
       # Build the application using AWS SAM CLI
       - name: Build application
-        run: sam build --use-container --template-file ./template.yaml
+        run: sam build --use-container --template-file ./template.yaml  
 
       # Upload the build artifacts
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts
+          include-hidden-files: true
           path: sam-backend-todo-app/.aws-sam/
 
   test:
@@ -97,6 +101,7 @@ jobs:
       # set the env variable for this job
       TODOS_TABLE_NAME: ${{ secrets.TODOS_TABLE_NAME }}
       LOCALSTACK_ENDPOINT: ${{vars.LOCALSTACK_ENDPOINT}}
+      AWS_REGION: ${{vars.AWS_REGION}}
 
     # setting environment for the job
     environment:
@@ -122,42 +127,23 @@ jobs:
         run: |
           # Install Node.js dependencies
           npm install
-      
-      # Install Python and pip for IaC testing
-      - name: Install Python and pip
-        run: |
-          # Install Python
-          sudo apt-get update
-          sudo apt-get install -y python3 python3-pip
-          # Upgrade pip
-          python3 -m pip install --upgrade pip
 
       # Setup LocalStack for SAST testing
       - name: Set up LocalStack
         uses: LocalStack/setup-localstack@v0.2.3
-        with:
-          services: "s3,dynamodb,lambda,apigateway"
-          debug: true
-      
-      # Starting the localstack service
-      - name: Start LocalStack
-        run: |
-          # Install Docker
-          sudo apt-get update
-          sudo apt-get install -y docker.io
-          # Start Docker service
-          sudo service docker start
-          # Start LocalStack in the background
-          localstack start --host
-          # Wait for LocalStack to be ready
-          echo "Waiting for LocalStack to be ready..."
-          while ! curl -s http://localhost:4566/_localstack/health | grep '"dynamodb": "running"'; do
-            sleep 5
-          done
 
+      # Load .env variables into the workflow environment
+      - name: Export .env to environment
+        run: |
+          echo "LOCALSTACK_ENDPOINT=${{vars.LOCALSTACK_ENDPOINT}}" >> $GITHUB_ENV
+          echo "AWS_ACCESS_KEY_ID=${{vars.TEST_AWS_ACCESS_KEY_ID}}" >> $GITHUB_ENV
+          echo "AWS_SECRET_ACCESS_KEY=${{vars.TEST_AWS_SECRET_ACCESS_KEY}}" >> $GITHUB_ENV
+          echo "AWS_REGION=${{vars.AWS_REGION}}" >> $GITHUB_ENV
+          echo "TODOS_TABLE_NAME=${{vars.TEST_TODOS_TABLE_NAME}}" >> $GITHUB_ENV
+        
       # unit test
       - name: Unit test
-        run: npm test:unit
+        run: npm run test:unit
       
       # integration test for createTodoHandler
       - name: Integration test for createTodoHandler
@@ -199,9 +185,8 @@ jobs:
       - name: SAST Test for IaC
         uses: bridgecrewio/checkov-action@v12
         with:
-          # This will add both a CLI output to the console and create a results.sarif file
-          output_format: cli
-          output_file_path: console
+          directory: sam-backend-todo-app/
+          file: sam-backend-todo-app/template.yaml
 
   deploy:
 
@@ -263,5 +248,5 @@ jobs:
       # Clean up build artifacts
       - name: Clean up build artifacts
         run: |
-          rm -rf sam-backend-todo-app/.aws-sam/
+          rm -rf sam-backend-todo-app/.aws-sam
           echo "Build artifacts cleaned up."  

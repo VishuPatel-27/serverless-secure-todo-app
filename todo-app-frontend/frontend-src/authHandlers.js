@@ -1,5 +1,4 @@
 /**
- * Auth Handlers for the Todo App
  * This module handles user authentication using AWS Amplify Auth.
  * It provides functions for signing up, signing in, confirming sign up,
  * signing out, and checking user authentication status.
@@ -15,7 +14,6 @@ import {
 import { showTodoApp, showAuthSection } from './uiHandlers.js';
 
 /**
- * Initializes authentication handlers for the Todo App.
  * This function sets up event listeners for sign up, sign in,
  * confirmation code input, and toggling between sign up and sign in modes.
  * It also manages the display of messages and UI elements based on authentication state.

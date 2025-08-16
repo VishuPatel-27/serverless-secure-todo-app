@@ -1,9 +1,9 @@
 /**
  * @jest-environment jsdom
  * This file contains tests for the uiHandlers module.
- * It tests the functionality of showing the todo app, showing the auth section,
- * and rendering todos.
- * The tests ensure that the UI updates correctly when switching between auth and todo app sections,
+ * It tests the functionality of showing the app itself, showing the auth section,
+ * and rendering different tasks.
+ * The tests ensure that the UI updates correctly when switching between auth and app sections,
  * and that todos are rendered correctly in the UI.
  */
 import { showTodoApp, showAuthSection, renderTodos } from '../frontend-src/uiHandlers.js';

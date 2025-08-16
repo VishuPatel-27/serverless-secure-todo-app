@@ -80,6 +80,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: env
+          include-hidden-files: true
           path: todo-app-frontend/.env
           # This step ensures that the artifact is retained for 1 day
           retention-days: 1

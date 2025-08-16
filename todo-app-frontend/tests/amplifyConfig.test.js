@@ -1,5 +1,4 @@
 /**
- * Test for the Amplify configuration in the todo app frontend.
  * This test checks that the Amplify.configure function is called with the expected configuration.
  */
 import { Amplify } from 'aws-amplify';

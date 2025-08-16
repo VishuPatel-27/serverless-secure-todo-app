@@ -1,5 +1,4 @@
 /**
- * ESLint configuration for the todo-app-frontend project.
  * This configuration extends recommended rules and includes plugins for security and code quality.
  */
 import js from "@eslint/js";

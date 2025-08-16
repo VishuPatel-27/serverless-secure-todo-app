@@ -1,7 +1,6 @@
 /**
  * Test suite for authHandlers.js
- * This suite tests the authentication handlers for the Todo App frontend.
- * It includes tests for sign up, sign in, confirmation, and sign out functionalities.
+ * It includes tests for sign up, sign in, and sign out functionalities.
  * Each test checks the expected behavior of the handlers, including error handling and UI updates.
  * It uses Jest for mocking dependencies and verifying interactions.
  * The tests ensure that the authentication flow works correctly and that the UI reflects the current authentication state.

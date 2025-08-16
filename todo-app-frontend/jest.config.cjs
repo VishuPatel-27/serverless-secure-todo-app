@@ -1,5 +1,4 @@
 // jest.config.cjs
-// This is the Jest configuration file for the todo-app-frontend project.
 module.exports = {
   testEnvironment: 'jsdom',
   transform: {

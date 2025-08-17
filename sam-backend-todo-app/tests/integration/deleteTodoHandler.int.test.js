@@ -9,7 +9,7 @@
 const client = require('../utils/dynamoClient');
 const { PutCommand, GetCommand } = require('@aws-sdk/lib-dynamodb');
 const { createTodosTable, deleteTodosTable } = require('../utils/setupDynamo');
-const { deleteTodoHandler } = require('../../src/todos');
+const { deleteTodoHandler } = require('../../todos');
 
 require('dotenv').config({ path: '.env.test' });
 

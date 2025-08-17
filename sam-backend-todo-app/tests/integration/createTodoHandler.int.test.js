@@ -17,7 +17,7 @@ require('dotenv').config({ path: '.env.test' });
  * Import the createTodoHandler function from the todos module.
  * This function is responsible for handling the creation of todo items.
  */
-const { createTodoHandler } = require('../../src/todos');
+const { createTodoHandler } = require('../../todos');
 
 /**
  * Before all tests, create the DynamoDB table required for the tests.

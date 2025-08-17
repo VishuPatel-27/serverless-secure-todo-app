@@ -434,7 +434,7 @@ Resources:
       # becuase it does not require VPC access for this use case.
       #checkov:skip=CKV_AWS_158: Logs encryption with CMK not required for this project
       CodeUri: ./ # points to the source code file
-      Handler: src/todos.createTodoHandler # points to todos.js file, createTodoHandler function
+      Handler: ./todos.createTodoHandler # points to todos.js file, createTodoHandler function
       Runtime: nodejs20.x # Explicitly set runtime here as Globals.Function is overridden by Role property
       Timeout: 10 # Explicitly set timeout here
       Environment:
@@ -463,7 +463,7 @@ Resources:
       # becuase it does not require VPC access for this use case.
       #checkov:skip=CKV_AWS_158: Logs encryption with CMK not required for this project
       CodeUri: ./
-      Handler: src/todos.getTodosHandler
+      Handler: ./todos.getTodosHandler
       Runtime: nodejs20.x
       Timeout: 10
       Environment:
@@ -490,7 +490,7 @@ Resources:
       # becuase it does not require VPC access for this use case.
       #checkov:skip=CKV_AWS_158: Logs encryption with CMK not required for this project
       CodeUri: ./
-      Handler: src/todos.updateTodoHandler
+      Handler: ./todos.updateTodoHandler
       Runtime: nodejs20.x
       Timeout: 10
       Environment:
@@ -517,7 +517,7 @@ Resources:
       # becuase it does not require VPC access for this use case.
       #checkov:skip=CKV_AWS_158: Logs encryption with CMK not required for this project
       CodeUri: ./
-      Handler: src/todos.deleteTodoHandler
+      Handler: ./todos.deleteTodoHandler
       Runtime: nodejs20.x
       Timeout: 10
       Environment:

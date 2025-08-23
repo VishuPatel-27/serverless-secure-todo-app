@@ -83,8 +83,8 @@ Resources:
         CloudWatchMetricsEnabled: true # Enable CloudWatch metrics for visibility
         MetricName: ServerlessTodoWebACL # Metric name for CloudWatch
       Rules:
-          # This rule protect against the malicious actors by filtering out the request with know bad inputs and
-          # attack patterns like log4j
+        # This rule protect against the malicious actors by filtering out the request with know bad inputs and
+        # attack patterns like log4j
         - Name: AWS-AWSManagedRulesKnownBadInputsRuleSet
           Priority: 1
           Statement:
@@ -114,7 +114,8 @@ Resources:
   KMSKeyForDBandLogs:
     Type: AWS::KMS::Key
     Properties:
-      Description: KMS key used for encrypting DynamoDB table, CloudWatch logs, and Lambda environment variables.
+      Description: KMS key used for encrypting DynamoDB table, CloudWatch logs, and
+        Lambda environment variables.
       EnableKeyRotation: true
       KeyUsage: ENCRYPT_DECRYPT # Key usage for encryption and decryption
       KeyPolicy:
@@ -125,8 +126,8 @@ Resources:
             Effect: Allow
             Principal:
               AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
-            Action: "kms:*"
-            Resource: "*"
+            Action: kms:*
+            Resource: '*'
 
           # Allow lambda functions to use the key for encryption and decryption of dynamodb table and env variables
           - Sid: AllowLambdaUseOfKey
@@ -139,7 +140,7 @@ Resources:
               - kms:ReEncrypt*
               - kms:GenerateDataKey*
               - kms:DescribeKey
-            Resource: "*"
+            Resource: '*'
 
           # Allow DynamoDB to use the key for encryption and decryption
           - Sid: AllowDynamoDBUsage
@@ -152,8 +153,8 @@ Resources:
               - kms:ReEncrypt*
               - kms:GenerateDataKey*
               - kms:DescribeKey
-            Resource: "*"
-    
+            Resource: '*'
+
   # A client application for the Cognito User Pool.
   # This is what your frontend will use to interact with Cognito.
   CognitoUserPoolClient:
@@ -237,7 +238,7 @@ Resources:
       SSESpecification:
         SSEEnabled: true # Enable server-side encryption for the table
         SSEType: KMS
-        KMSMasterKeyId: !GetAtt KMSKeyForDBandLogs.Arn  # Use the KMS key defined above for encryption
+        KMSMasterKeyId: !GetAtt KMSKeyForDBandLogs.Arn # Use the KMS key defined above for encryption
       # Set billing mode to PAY_PER_REQUEST for cost optimization in serverless apps.
       # This scales automatically and you pay only for reads/writes.
       BillingMode: PAY_PER_REQUEST
@@ -253,7 +254,7 @@ Resources:
       Auth:
         DefaultAuthorizer: CognitoUserPoolAuthorizer
         # Disable default authorizer for CORS preflight
-        AddDefaultAuthorizerToCorsPreflight: false 
+        AddDefaultAuthorizerToCorsPreflight: false
         # Define the Cognito User Pool authorizer for API Gateway.
         Authorizers:
           CognitoUserPoolAuthorizer:
@@ -363,7 +364,7 @@ Resources:
           cacheClusterEnabled: true
           cacheClusterSize: '0.5' # Smallest cache size for cost efficiency
           methodSettings:
-            - resourcePath: "/todos"
+            - resourcePath: /todos
               httpMethod: GET, POST, OPTIONS
               cachingEnabled: true
               cacheTtlInSeconds: 300 # Cache for 5 minutes
@@ -471,7 +472,7 @@ Resources:
             RestApiId: !Ref TodoApi
     Metadata:
       BuildMethod: makefile
-  
+
   # Lambda function to update an existing to-do item.
   UpdateTodoFunction:
     Type: AWS::Serverless::Function
@@ -533,7 +534,7 @@ Resources:
   # --- S3 Bucket for Static Frontend Hosting ---
   LoggingBucket:
     Type: AWS::S3::Bucket
-    Properties:        
+    Properties:
       # checkov:skip=CKV_AWS_18: This S3 bucket has access logging disabled, but it is not a security risk in this context.
       BucketName: !Sub ${FrontendBucketName}-logs # Unique bucket name for logging
       VersioningConfiguration:
@@ -546,24 +547,24 @@ Resources:
         IgnorePublicAcls: true # Ignore public ACLs
         BlockPublicPolicy: true # Block public policies
         RestrictPublicBuckets: true # Restrict public buckets
- 
+
   # Bucket Policy to allow CloudFront service to write logs to this bucket
   LoggingBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
       Bucket: !Ref LoggingBucket
       PolicyDocument:
-        Version: "2012-10-17"
+        Version: '2012-10-17'
         Statement:
           - Sid: AllowCloudFrontServicePut
             Effect: Allow
             Principal:
               Service: delivery.logs.amazonaws.com
             Action: s3:PutObject
-            Resource: !Sub "${LoggingBucket.Arn}/cloudfront-logs/*"
+            Resource: !Sub ${LoggingBucket.Arn}/cloudfront-logs/*
             Condition:
               StringEquals:
-                "AWS:SourceAccount": !Ref AWS::AccountId
+                AWS:SourceAccount: !Ref AWS::AccountId
 
   FrontendBucket:
     Type: AWS::S3::Bucket
@@ -579,10 +580,10 @@ Resources:
         ErrorDocument: index.html # For single-page applications, route all errors to index.html
       # Public access block configuration to prevent public access to the bucket
       PublicAccessBlockConfiguration:
-          BlockPublicAcls: true # Block public ACLs
-          IgnorePublicAcls: true # Ignore public ACLs
-          BlockPublicPolicy: true # Block public policies
-          RestrictPublicBuckets: true # Restrict public buckets
+        BlockPublicAcls: true # Block public ACLs
+        IgnorePublicAcls: true # Ignore public ACLs
+        BlockPublicPolicy: true # Block public policies
+        RestrictPublicBuckets: true # Restrict public buckets
       CorsConfiguration:
         CorsRules:
           - AllowedHeaders:
@@ -636,7 +637,7 @@ Resources:
       DistributionConfig:
         Comment: CloudFront distribution for Serverless To-Do App Frontend
         Enabled: true
-        WebACLId: !GetAtt WebACL.Arn 
+        WebACLId: !GetAtt WebACL.Arn
         Logging:
           Bucket: !GetAtt LoggingBucket.DomainName
           IncludeCookies: false # Do not log cookies
@@ -690,12 +691,12 @@ Outputs:
   CloudFrontDistributionURL:
     Description: URL of the CloudFront distribution for the static frontend
     Value: !GetAtt CloudFrontDistribution.DomainName
-  
+
   # Output the S3 bucket name for the static frontend.
   FrontendBucketName:
     Description: Name of the S3 bucket hosting the static frontend
     Value: !Ref FrontendBucket
-  
+
   # Output the CloudFront Distribution ID for invalidation purposes.
   CloudFrontDistributionId:
     Description: CloudFront Distribution ID for the static frontend

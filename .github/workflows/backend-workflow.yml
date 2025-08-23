@@ -223,7 +223,7 @@ jobs:
       
       # deploy the application using AWS SAM CLI
       - name: Deploy application
-        run: sam deploy --template-file ./template.yaml --no-confirm-changeset --no-fail-on-empty-changeset
+        run: sam deploy --template-file .aws-sam/build/template.yaml --no-confirm-changeset --no-fail-on-empty-changeset
 
   # Clean up job to remove build artifacts after deployment
   # This job runs after the deploy job to clean up any build artifacts.

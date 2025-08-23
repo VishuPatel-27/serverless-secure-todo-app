@@ -229,6 +229,7 @@ jobs:
             --template-file .aws-sam/build/template.yaml \
             --stack-name sam-secure-todo-app \
             --region ${{vars.AWS_REGION}} \
+            --s3-bucket serverless-secure-todo-app-frontend \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset
               

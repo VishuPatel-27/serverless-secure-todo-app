@@ -39,7 +39,7 @@ const client = new DynamoDBClient({
    * This allows for local development and testing without needing to deploy to AWS.
    * In production, this will be undefined, and the client will connect to AWS DynamoDB.
    */
-  eendpoint: isLocal ? process.env.LOCALSTACK_ENDPOINT : undefined,
+  endpoint: isLocal ? process.env.LOCALSTACK_ENDPOINT : undefined,
   region: process.env.AWS_REGION || "us-east-1",
   ...(isLocal && {
     credentials: {

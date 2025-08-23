@@ -16,7 +16,7 @@ const {
   updateTodoHandler,
   deleteTodoHandler,
   optionsHandler
-} = require('../../todos');
+} = require('../../src/todos');
 
 const { v4: uuidv4 } = require('uuid');
 

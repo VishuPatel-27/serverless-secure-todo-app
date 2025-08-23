@@ -1,37 +1,38 @@
 {
-  "name": "serverless_todos",
-  "version": "1.0.0",
-  "description": "Serverless nodejs based to-do application.",
-  "main": "todos.js",
-  "repository": "https://github.com/awslabs/aws-sam-cli/tree/develop/samcli/local/init/templates/cookiecutter-aws-sam-hello-nodejs",
-  "author": "SAM CLI",
-  "license": "MIT",
-  "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.848.0",
-    "@aws-sdk/lib-dynamodb": "^3.850.0",
-    "axios": "^1.6.0",
-    "dotenv": "^17.2.1",
-    "uuid": "^11.1.0"
-  },
-  "scripts": {
-    "test": "jest",
-    "test:unit": "jest tests/unit",
-    "test:int-create": "jest tests/integration/createTodoHandler.int.test.js",
-    "test:int-get": "jest tests/integration/getTodoHandler.int.test.js",
-    "test:int-update": "jest tests/integration/updateTodoHandler.int.test.js",
-    "test:int-delete": "jest tests/integration/deleteTodoHandler.int.test.js",
-    "lint": "eslint . --ext .js",
-    "lint:fix": "eslint . --ext .js --fix"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.32.0",
-    "aws-sdk-client-mock": "^4.1.0",
-    "eslint": "^9.32.0",
-    "jest": "^30.0.5",
-    "eslint-plugin-no-secrets": "^2.2.1",
-    "eslint-plugin-node": "^11.1.0",
-    "eslint-plugin-promise": "^7.2.1",
-    "eslint-plugin-security": "^3.0.1",
-    "globals": "^16.3.0"
-  }
+	"name": "serverless_todos",
+	"version": "1.0.0",
+	"description": "Serverless nodejs based to-do application.",
+	"main": "todos.js",
+	"repository": "https://github.com/awslabs/aws-sam-cli/tree/develop/samcli/local/init/templates/cookiecutter-aws-sam-hello-nodejs",
+	"author": "SAM CLI",
+	"license": "MIT",
+	"dependencies": {
+		"@aws-sdk/client-dynamodb": "^3.848.0",
+		"@aws-sdk/lib-dynamodb": "^3.850.0",
+		"axios": "^1.6.0",
+		"dotenv": "^17.2.1",
+		"uuid": "^11.1.0"
+	},
+	"scripts": {
+		"test": "jest",
+		"test:unit": "jest tests/unit",
+		"test:int-create": "jest tests/integration/createTodoHandler.int.test.js",
+		"test:int-get": "jest tests/integration/getTodoHandler.int.test.js",
+		"test:int-update": "jest tests/integration/updateTodoHandler.int.test.js",
+		"test:int-delete": "jest tests/integration/deleteTodoHandler.int.test.js",
+		"lint": "eslint . --ext .js",
+		"lint:fix": "eslint . --ext .js --fix"
+	},
+	"devDependencies": {
+		"@eslint/js": "^9.32.0",
+		"aws-sdk-client-mock": "^4.1.0",
+		"eslint": "^9.32.0",
+		"jest": "^30.0.5",
+		"eslint-plugin-no-secrets": "^2.2.1",
+		"eslint-plugin-node": "^11.1.0",
+		"eslint-plugin-promise": "^7.2.1",
+		"eslint-plugin-security": "^3.0.1",
+		"globals": "^16.3.0"
+	},
+	"Transform": "AWS::Serverless-2016-10-31"
 }

@@ -1,0 +1,8 @@
+node_modules/
+tests/
+coverage/
+eslint.config.cjs
+jest.config.js
+.env
+.env.test
+venv/

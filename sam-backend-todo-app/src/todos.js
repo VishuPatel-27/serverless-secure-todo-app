@@ -32,18 +32,21 @@ const {
  */
 const { v4: uuidv4 } = require('uuid');
 
+const isLocal = !!process.env.LOCALSTACK_ENDPOINT;
 const client = new DynamoDBClient({
   /**
    * The endpoint is set to the local DynamoDB instance if LOCALSTACK_ENDPOINT is defined.
    * This allows for local development and testing without needing to deploy to AWS.
    * In production, this will be undefined, and the client will connect to AWS DynamoDB.
    */
-  endpoint: process.env.LOCALSTACK_ENDPOINT || undefined,
-  region: process.env.AWS_REGION || 'us-east-1',
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'test',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'test',
-  },
+  eendpoint: isLocal ? process.env.LOCALSTACK_ENDPOINT : undefined,
+  region: process.env.AWS_REGION || "us-east-1",
+  ...(isLocal && {
+    credentials: {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID || "test",
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "test",
+    },
+  }),
 }); 
 const docClient = DynamoDBDocumentClient.from(client);
 
@@ -144,7 +147,7 @@ exports.createTodoHandler = async (event) => {
 
     return generateResponse(201, { message: "To-Do item created successfully.", todo: params.Item });
   } catch (error) {
-    // console.error("Error creating To-Do item:", error);
+    console.error("Error creating To-Do item:", error);
     // Return a generic error message for security, log detailed error internally
     return generateResponse(500, { message: "Failed to create To-Do item. Please try again later." });
   }
@@ -188,7 +191,7 @@ exports.getTodosHandler = async (event) => {
 
     return generateResponse(200, { todos: todos });
   } catch (error) {
-    // console.error("Error getting To-Do items:", error);
+    console.error("Error getting To-Do items:", error);
     return generateResponse(500, { message: "Failed to retrieve To-Do items. Please try again later." });
   }
 };

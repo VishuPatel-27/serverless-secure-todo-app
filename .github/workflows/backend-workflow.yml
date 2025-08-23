@@ -220,6 +220,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-artifacts
+          path: sam-backend-todo-app/.aws-sam/
       
       # deploy the application using AWS SAM CLI
       - name: Deploy application

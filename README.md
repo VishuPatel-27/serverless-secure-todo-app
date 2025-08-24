@@ -104,12 +104,12 @@ npm install
 - **Backend:**
 	```sh
 	cd sam-backend-todo-app
-	npm test:unit
+	npm run test:unit
 	```
 - **Frontend:**
 	```sh
 	cd todo-app-frontend
-	npm test
+	npm run test
 	```
 ### 2. Running integration testing
 To run integration test on backend makesure localstack is running on your system:

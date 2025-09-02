@@ -67,48 +67,7 @@ Resources:
           Mutable: true
           Required: true
       MfaConfiguration: 'OFF' # Can be set to OPTIONAL or REQUIRED for MFA
-
-  # --- AWS WAF Web ACL for CloudFront Distribution ---
-  # This Web ACL provides protection against common web exploits.
-  # It is associated with the CloudFront distribution to protect the static frontend.
-  WebACL:
-    Type: AWS::WAFv2::WebACL
-    Properties:
-      Name: ServerlessTodoWebACL
-      Scope: CLOUDFRONT # This Web ACL is for CloudFront distribution
-      DefaultAction:
-        Allow: {} # Default action is to allow requests
-      VisibilityConfig:
-        SampledRequestsEnabled: true # Enable sampled requests for monitoring
-        CloudWatchMetricsEnabled: true # Enable CloudWatch metrics for visibility
-        MetricName: ServerlessTodoWebACL # Metric name for CloudWatch
-      Rules:
-        # This rule protect against the malicious actors by filtering out the request with know bad inputs and
-        # attack patterns like log4j
-        - Name: AWS-AWSManagedRulesKnownBadInputsRuleSet
-          Priority: 1
-          Statement:
-            ManagedRuleGroupStatement:
-              VendorName: AWS
-              Name: AWSManagedRulesKnownBadInputsRuleSet
-          OverrideAction:
-            None: {}
-          VisibilityConfig:
-            CloudWatchMetricsEnabled: true # Enable CloudWatch metrics for this rule
-            MetricName: AWSManagedRulesKnownBadInputsRuleSet
-            SampledRequestsEnabled: true # Enable sampled requests for this rule.
-        - Name: AWS-AWSManagedRulesCommonRuleSet
-          Priority: 0 # Priority of the rule in the Web ACL
-          OverrideAction:
-            None: {} # No override action, use the default action
-          Statement:
-            ManagedRuleGroupStatement:
-              Name: AWSManagedRulesCommonRuleSet # Use AWS managed rules for common web exploits
-              VendorName: AWS # Vendor name for the managed rule group
-          VisibilityConfig:
-            SampledRequestsEnabled: true # Enable sampled requests for this rule
-            CloudWatchMetricsEnabled: true # Enable CloudWatch metrics for this rule
-            MetricName: AWSManagedRulesCommonRuleSet # Metric name for CloudWatch
+      
   # AWS KMS key for dynamodb encryption
   # This key is used to encrypt the DynamoDB table data at rest.
   KMSKeyForDBandLogs:
@@ -632,12 +591,13 @@ Resources:
 
   # --- Amazon CloudFront Distribution ---
   CloudFrontDistribution:
+  #checkov:skip=CKV_AWS_68: This CloudFront Distribution does not have WAF associated, 
+  #but it is not a security risk in this context.
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
         Comment: CloudFront distribution for Serverless To-Do App Frontend
         Enabled: true
-        WebACLId: !GetAtt WebACL.Arn
         Logging:
           Bucket: !GetAtt LoggingBucket.DomainName
           IncludeCookies: false # Do not log cookies

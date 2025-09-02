@@ -71,6 +71,9 @@ serverless-secure-todo-app/
 	├── .nvmrc                           # Node version manager config
 	└── dist/                            # Production build output (generated)
 ```
+## Application Architecture
+
+<img width="2163" height="1161" alt="serverless_todo_app_architecture" src="https://github.com/user-attachments/assets/1cee3eac-1c27-4306-aaed-3b07bcce8d41" />
 
 ## Prerequisites
 - Node.js (v20+ recommended)
